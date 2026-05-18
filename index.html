@@ -462,7 +462,14 @@
 
         const td = document.createElement('td');
         td.className = 'cell-status';
+        td.title = 'ダブルクリックで進捗変更';
 
+        // 通常表示ラベル（未選択時は非表示）
+        const span = document.createElement('span');
+        span.className = 'status-label';
+        span.style.display = currentStatus ? '' : 'none';
+
+        // プルダウン（デフォルト非表示）
         const sel = document.createElement('select');
         sel.className = 'status-select';
 
@@ -473,14 +480,32 @@
           sel.appendChild(o);
         });
         sel.value = currentStatus;
-        applyStatusStyle(dateTd, td, sel, currentStatus);
+        applyStatusStyle(dateTd, td, sel, span, currentStatus);
 
+        // ダブルクリックでプルダウン表示
+        td.addEventListener('dblclick', () => {
+          span.style.display = 'none';
+          sel.style.display = '';
+          sel.focus();
+          try { sel.showPicker(); } catch(e) {}
+        });
+
+        // 選択後: ラベル更新してプルダウン非表示
         sel.addEventListener('change', () => {
           const newStatus = sel.value;
-          applyStatusStyle(dateTd, td, sel, newStatus);
+          applyStatusStyle(dateTd, td, sel, span, newStatus);
+          sel.style.display = 'none';
+          span.style.display = newStatus ? '' : 'none';
           saveStatus(proj.project_number, proj.machine, proc.no, newStatus);
         });
 
+        // フォーカスが外れたら閉じる
+        sel.addEventListener('blur', () => {
+          sel.style.display = 'none';
+          span.style.display = sel.value ? '' : 'none';
+        });
+
+        td.appendChild(span);
         td.appendChild(sel);
         trStatus.appendChild(td);
       });
