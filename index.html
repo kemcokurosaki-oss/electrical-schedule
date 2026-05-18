@@ -411,6 +411,7 @@
       if (proc.linked) tdItem.title = '全体工程表と連携';
       trDate.appendChild(tdItem);
 
+      const dateTds = [];
       projects.forEach(proj => {
         const td = document.createElement('td');
         td.className = 'cell-date' + (proc.linked ? ' linked' : '');
@@ -418,6 +419,7 @@
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           td.textContent = fmtDate(linkedMap[key]);
         }
+        dateTds.push(td);
         trDate.appendChild(td);
       });
 
@@ -436,9 +438,33 @@
       tdItemS.textContent = '';
       trStatus.appendChild(tdItemS);
 
-      projects.forEach(() => {
+      projects.forEach((proj, pi) => {
+        const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
+        const currentStatus = statusMap[statusKey] || '';
+        const dateTd = dateTds[pi];
+
         const td = document.createElement('td');
         td.className = 'cell-status';
+
+        const sel = document.createElement('select');
+        sel.className = 'status-select';
+
+        ['', '作業中', '完了', '対象外'].forEach(opt => {
+          const o = document.createElement('option');
+          o.value = opt;
+          o.textContent = opt || '─';
+          sel.appendChild(o);
+        });
+        sel.value = currentStatus;
+        applyStatusStyle(dateTd, td, sel, currentStatus);
+
+        sel.addEventListener('change', () => {
+          const newStatus = sel.value;
+          applyStatusStyle(dateTd, td, sel, newStatus);
+          saveStatus(proj.project_number, proj.machine, proc.no, newStatus);
+        });
+
+        td.appendChild(sel);
         trStatus.appendChild(td);
       });
 
