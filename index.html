@@ -267,35 +267,63 @@
     const tbody = document.getElementById('tbody');
 
     // ─── ヘッダー（3行）───
-    const headerRows = [
-      { cls: 'header-client',  vals: projects.map(p => p.customer_name || '─') },
-      { cls: 'header-number',  vals: projects.map(p => p.project_number) },
-      { cls: 'header-machine', vals: projects.map(p => p.machine || '─') },
-    ];
-    const labels = ['客先', '工番', '機種'];
+    // 同じ工番を連続グループとしてまとめる（colspan結合用）
+    const projectGroups = [];
+    let prevNum = null;
+    projects.forEach((p, i) => {
+      if (p.project_number === prevNum) {
+        projectGroups[projectGroups.length - 1].count++;
+      } else {
+        projectGroups.push({ project_number: p.project_number, customer_name: p.customer_name, count: 1 });
+        prevNum = p.project_number;
+      }
+    });
 
     thead.innerHTML = '';
-    headerRows.forEach((row, i) => {
+
+    // 行1: 客先名（同じ工番のグループを結合）
+    {
       const tr = document.createElement('tr');
-      // No.列
-      const thNo = document.createElement('th');
-      thNo.className = 'col-no';
-      thNo.textContent = '';
-      tr.appendChild(thNo);
-      // 項目列
-      const thItem = document.createElement('th');
-      thItem.className = 'col-item';
-      thItem.textContent = labels[i];
-      tr.appendChild(thItem);
-      // プロジェクト列
-      row.vals.forEach(val => {
+      const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
+      const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '客先'; tr.appendChild(thItem);
+      projectGroups.forEach(g => {
         const th = document.createElement('th');
-        th.className = row.cls;
-        th.textContent = val;
+        th.className = 'header-client';
+        th.textContent = g.customer_name || '─';
+        if (g.count > 1) th.colSpan = g.count;
         tr.appendChild(th);
       });
       thead.appendChild(tr);
-    });
+    }
+
+    // 行2: 工番（同じ工番のグループを結合）
+    {
+      const tr = document.createElement('tr');
+      const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
+      const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '工番'; tr.appendChild(thItem);
+      projectGroups.forEach(g => {
+        const th = document.createElement('th');
+        th.className = 'header-number';
+        th.textContent = g.project_number;
+        if (g.count > 1) th.colSpan = g.count;
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+    }
+
+    // 行3: 機種（各機種は個別セル）
+    {
+      const tr = document.createElement('tr');
+      const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
+      const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '機種'; tr.appendChild(thItem);
+      projects.forEach(p => {
+        const th = document.createElement('th');
+        th.className = 'header-machine';
+        th.textContent = p.machine || '─';
+        tr.appendChild(th);
+      });
+      thead.appendChild(tr);
+    }
 
     // ─── ボディ（工程行）───
     tbody.innerHTML = '';
