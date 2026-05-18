@@ -142,17 +142,34 @@
     /* ─── 進捗プルダウン ─────────────────────────────── */
     tr.row-status td { height: 24px; }
 
+    td.cell-status { padding: 2px; cursor: default; }
+
+    /* 通常表示: ステータスラベル */
+    .status-label {
+      display: inline-block;
+      font-size: 11px;
+      padding: 1px 6px;
+      border-radius: 3px;
+      line-height: 18px;
+      cursor: default;
+    }
+    .status-label.lbl-wip  { background: #9ae6b4; color: #276749; }
+    .status-label.lbl-done { background: #e2e8f0; color: #888; }
+    .status-label.lbl-na   { color: #888; }
+
+    /* 編集時: プルダウン */
     select.status-select {
+      display: none;
       width: 86px;
       border: 1px solid #ccc;
       border-radius: 3px;
       background: #f9f9f9;
-      font-size: 10px;
+      font-size: 12px;
       cursor: pointer;
       padding: 1px 2px;
       font-family: 'Meiryo', 'メイリオ', sans-serif;
       outline: none;
-      height: 20px;
+      height: 22px;
     }
     select.status-select.sel-wip  { background: #9ae6b4; }
     select.status-select.sel-done { background: #e2e8f0; color: #999; }
