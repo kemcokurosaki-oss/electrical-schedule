@@ -290,6 +290,7 @@
         const th = document.createElement('th');
         th.className = 'header-client';
         th.textContent = g.customer_name || '─';
+        if (g.customer_name) th.title = g.customer_name;
         if (g.count > 1) th.colSpan = g.count;
         tr.appendChild(th);
       });
