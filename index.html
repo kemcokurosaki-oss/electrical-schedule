@@ -139,6 +139,47 @@
     .status-na      { color: #999; }
     .status-pending { color: #c05621; }
 
+    /* ─── 進捗プルダウン ─────────────────────────────── */
+    tr.row-status td { height: 24px; }
+
+    select.status-select {
+      width: 86px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: #f9f9f9;
+      font-size: 10px;
+      cursor: pointer;
+      padding: 1px 2px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+      outline: none;
+      height: 20px;
+    }
+    select.status-select.sel-wip  { background: #9ae6b4; }
+    select.status-select.sel-done { background: #e2e8f0; color: #999; }
+
+    /* 完了: 日付セルグレーアウト */
+    td.cell-date.proc-done {
+      background: #e8e8e8 !important;
+      color: #bbb;
+    }
+    tr.row-status td.proc-done { background: #e8e8e8 !important; }
+
+    /* 対象外: 日付セルに斜線（疑似要素で重ね描き） */
+    td.cell-date.proc-na { position: relative; overflow: hidden; }
+    td.cell-date.proc-na::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        135deg,
+        transparent,
+        transparent 5px,
+        rgba(100,100,100,0.3) 5px,
+        rgba(100,100,100,0.3) 6px
+      );
+      pointer-events: none;
+    }
+
     /* 空テーブル状態 */
     #no-data {
       text-align: center;
