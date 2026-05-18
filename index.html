@@ -311,8 +311,19 @@
       if (!p.customer_name) p.customer_name = custMap[p.project_number];
     });
 
-    // 3. 描画
-    renderTable(projects, linkedMap);
+    // 3. 進捗状況を取得
+    let statusMap = {};
+    try {
+      const { data: statusData } = await sb
+        .from('denki_process_status')
+        .select('project_number, machine, process_no, status');
+      (statusData || []).forEach(s => {
+        statusMap[`${s.project_number}__${s.machine}__${s.process_no}`] = s.status;
+      });
+    } catch(e) { /* テーブル未作成の場合は無視 */ }
+
+    // 4. 描画
+    renderTable(projects, linkedMap, statusMap);
     document.getElementById('main-table').style.display = '';
     hideLoading();
   }
