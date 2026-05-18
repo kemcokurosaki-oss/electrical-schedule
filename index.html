@@ -256,6 +256,20 @@
       if (!linkedMap[key]) linkedMap[key] = t.start_date;
     });
 
+    // customer_name が空の工番を同工番の全タスクから補完
+    const { data: custData } = await sb
+      .from('tasks')
+      .select('project_number, customer_name')
+      .in('project_number', projectNumbers)
+      .not('customer_name', 'is', null);
+    const custMap = {};
+    (custData || []).forEach(t => {
+      if (t.customer_name && !custMap[t.project_number]) custMap[t.project_number] = t.customer_name;
+    });
+    projects.forEach(p => {
+      if (!p.customer_name) p.customer_name = custMap[p.project_number];
+    });
+
     // 3. 描画
     renderTable(projects, linkedMap);
     document.getElementById('main-table').style.display = '';
