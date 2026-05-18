@@ -499,6 +499,46 @@
     document.getElementById('loading-overlay').classList.remove('visible');
   }
 
+  function applyStatusStyle(dateTd, statusTd, sel, status) {
+    dateTd.classList.remove('proc-done', 'proc-na');
+    statusTd.classList.remove('proc-done');
+    sel.classList.remove('sel-wip', 'sel-done');
+    switch (status) {
+      case '完了':
+        dateTd.classList.add('proc-done');
+        statusTd.classList.add('proc-done');
+        sel.classList.add('sel-done');
+        break;
+      case '作業中':
+        sel.classList.add('sel-wip');
+        break;
+      case '対象外':
+        dateTd.classList.add('proc-na');
+        break;
+    }
+  }
+
+  async function saveStatus(projectNumber, machine, processNo, status) {
+    try {
+      const pn = String(projectNumber);
+      const mc = machine || '';
+      if (!status) {
+        await sb.from('denki_process_status')
+          .delete()
+          .eq('project_number', pn)
+          .eq('machine', mc)
+          .eq('process_no', processNo);
+      } else {
+        await sb.from('denki_process_status').upsert(
+          { project_number: pn, machine: mc, process_no: processNo, status },
+          { onConflict: 'project_number,machine,process_no' }
+        );
+      }
+    } catch(e) {
+      console.warn('ステータス保存エラー:', e);
+    }
+  }
+
   init();
 </script>
 </body>
