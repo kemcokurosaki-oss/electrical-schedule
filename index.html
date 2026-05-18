@@ -208,7 +208,13 @@
 
   // ─── メイン処理 ───────────────────────────────────────
   async function init() {
-    // 1. プロジェクト一覧を取得（工場出荷タスクから）
+    // 1. 完了済み工番を取得
+    const { data: completedData } = await sb
+      .from('completed_projects')
+      .select('project_number');
+    const completedNums = new Set((completedData || []).map(c => String(c.project_number)));
+
+    // 2. プロジェクト一覧を取得（工場出荷タスクから）
     const { data: shipTasks, error: e1 } = await sb
       .from('tasks')
       .select('project_number, machine, customer_name, start_date')
@@ -217,9 +223,10 @@
 
     if (e1) { console.error(e1); hideLoading(); return; }
 
-    // 重複排除（同工番・同機種の最初の1件）
+    // 重複排除（同工番・同機種の最初の1件）＋完了済みを除外
     const seen = new Set();
     const projects = (shipTasks || []).filter(p => {
+      if (completedNums.has(String(p.project_number))) return false;
       const key = `${p.project_number}__${p.machine}`;
       if (seen.has(key)) return false;
       seen.add(key);
