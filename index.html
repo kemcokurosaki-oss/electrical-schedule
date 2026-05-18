@@ -485,9 +485,8 @@
         // ダブルクリックでプルダウン表示
         td.addEventListener('dblclick', () => {
           span.style.display = 'none';
-          sel.style.display = '';
+          sel.style.display = 'inline-block';
           sel.focus();
-          try { sel.showPicker(); } catch(e) {}
         });
 
         // 選択後: ラベル更新してプルダウン非表示
