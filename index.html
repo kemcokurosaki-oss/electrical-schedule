@@ -541,21 +541,26 @@
     document.getElementById('loading-overlay').classList.remove('visible');
   }
 
-  function applyStatusStyle(dateTd, statusTd, sel, status) {
+  function applyStatusStyle(dateTd, statusTd, sel, labelSpan, status) {
     dateTd.classList.remove('proc-done', 'proc-na');
     statusTd.classList.remove('proc-done');
     sel.classList.remove('sel-wip', 'sel-done');
+    labelSpan.className = 'status-label';
+    labelSpan.textContent = status;
     switch (status) {
       case '完了':
         dateTd.classList.add('proc-done');
         statusTd.classList.add('proc-done');
         sel.classList.add('sel-done');
+        labelSpan.classList.add('lbl-done');
         break;
       case '作業中':
         sel.classList.add('sel-wip');
+        labelSpan.classList.add('lbl-wip');
         break;
       case '対象外':
         dateTd.classList.add('proc-na');
+        labelSpan.classList.add('lbl-na');
         break;
     }
   }
