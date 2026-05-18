@@ -545,7 +545,7 @@
 
   function applyStatusStyle(dateTd, statusTd, sel, labelSpan, status) {
     dateTd.classList.remove('proc-done', 'proc-na');
-    statusTd.classList.remove('proc-done');
+    statusTd.classList.remove('proc-done', 'proc-wip');
     sel.classList.remove('sel-wip', 'sel-done');
     labelSpan.className = 'status-label';
     labelSpan.textContent = status;
@@ -557,8 +557,8 @@
         labelSpan.classList.add('lbl-done');
         break;
       case '作業中':
+        statusTd.classList.add('proc-wip');
         sel.classList.add('sel-wip');
-        labelSpan.classList.add('lbl-wip');
         break;
       case '対象外':
         dateTd.classList.add('proc-na');
