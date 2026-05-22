@@ -193,6 +193,21 @@
       font-size: 14px;
     }
 
+    /* ─── 部署別カラー ─────────────────────────────────────── */
+    /* 固定列（工程名・No.）は部署色でしっかり塗る */
+    tr.dept-eigyo  td.col-no, tr.dept-eigyo  td.col-item { background: #FBAD4F !important; }
+    tr.dept-sekkei td.col-no, tr.dept-sekkei td.col-item { background: #85C1E9 !important; }
+    tr.dept-denki  td.col-no, tr.dept-denki  td.col-item { background: #F8A5C2 !important; }
+    tr.dept-sosou  td.col-no, tr.dept-sosou  td.col-item { background: #F1948A !important; }
+    tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #D7BDE2 !important; }
+
+    /* データセルは薄く色付け（ステータス色が !important で上書き） */
+    tr.dept-eigyo  td.cell-date, tr.dept-eigyo  td.cell-owner, tr.dept-eigyo  td.cell-status { background: #FEF0D9; }
+    tr.dept-sekkei td.cell-date, tr.dept-sekkei td.cell-owner, tr.dept-sekkei td.cell-status { background: #DAEEF9; }
+    tr.dept-denki  td.cell-date, tr.dept-denki  td.cell-owner, tr.dept-denki  td.cell-status { background: #FDDEEC; }
+    tr.dept-sosou  td.cell-date, tr.dept-sosou  td.cell-owner, tr.dept-sosou  td.cell-status { background: #FAD7D4; }
+    tr.dept-denso  td.cell-date, tr.dept-denso  td.cell-owner, tr.dept-denso  td.cell-status { background: #EDE0F3; }
+
     /* ─── ガントビュー ─────────────────────────────────────── */
     #view-gantt {
       display: none;
