@@ -5,6 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>電気工程確認表</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <link rel="stylesheet" href="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.css">
+  <script src="https://cdn.dhtmlx.com/gantt/edge/dhtmlxgantt.js"></script>
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
 
@@ -25,9 +27,29 @@
       position: sticky;
       top: 0;
       z-index: 100;
+      height: 44px;
     }
 
     header h1 { font-size: 16px; font-weight: bold; }
+
+    /* ─── タブ ────────────────────────────────────────────── */
+    .tab-group { display: flex; gap: 4px; margin-left: 16px; }
+    .tab-btn {
+      padding: 4px 16px;
+      border: 1px solid rgba(255,255,255,0.4);
+      border-radius: 4px;
+      background: transparent;
+      color: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+    }
+    .tab-btn.active {
+      background: rgba(255,255,255,0.25);
+      border-color: white;
+      font-weight: bold;
+    }
+    .tab-btn:hover:not(.active) { background: rgba(255,255,255,0.1); }
 
     #loading-overlay {
       display: none;
@@ -42,6 +64,9 @@
     }
     #loading-overlay.visible { display: flex; }
 
+    /* ─── 表ビュー ─────────────────────────────────────────── */
+    #view-table { display: block; }
+
     #table-gap {
       height: 16px;
       background: #f0f2f5;
@@ -50,7 +75,7 @@
     #table-wrapper {
       overflow: auto;
       padding: 0 16px 16px 0;
-      max-height: calc(100vh - 64px);
+      max-height: calc(100vh - 44px - 16px);
     }
 
     table {
@@ -70,7 +95,6 @@
       vertical-align: middle;
     }
 
-    /* 固定列（No.・項目） */
     .col-no, .col-item {
       position: sticky;
       background: white;
@@ -79,7 +103,6 @@
     .col-no  { left: 0; min-width: 36px; max-width: 36px; }
     .col-item { left: 36px; min-width: 300px; max-width: 300px; text-align: left; }
 
-    /* ヘッダー行 */
     thead tr th {
       background: #1a3a5c;
       color: white;
@@ -90,21 +113,23 @@
     thead tr:nth-child(1) th { top: 0; }
     thead tr:nth-child(2) th { top: 25px; }
     thead tr:nth-child(3) th { top: 50px; }
-
     thead th.col-no, thead th.col-item { z-index: 30; background: #1a3a5c; text-align: center; }
 
-    /* 客先名ヘッダー */
-    .header-client { background: #2c5282 !important; font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
-    /* 工番ヘッダー */
-    .header-number { background: #2d6a9f !important; }
-    /* 機種ヘッダー */
+    .header-client  { background: #2c5282 !important; font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+    .header-number  { background: #2d6a9f !important; }
     .header-machine { background: #3182ce !important; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
 
-    /* プロジェクト列 */
     td.cell-date {
       min-width: 90px;
       max-width: 90px;
       font-size: 11px;
+      cursor: pointer;
+    }
+    td.cell-owner {
+      min-width: 90px;
+      max-width: 90px;
+      font-size: 11px;
+      color: #444;
       cursor: pointer;
     }
     td.cell-status {
@@ -115,31 +140,25 @@
       cursor: pointer;
     }
 
-    /* 工程行（日付行） */
     tr.row-date td { background: #fff; height: 32px; }
-    tr.row-date td.col-no  { background: #f7fafc; font-weight: bold; }
+    tr.row-date td.col-no   { background: #f7fafc; font-weight: bold; }
     tr.row-date td.col-item { background: #f7fafc; }
 
-    /* 担当者行 */
     tr.row-owner td { background: #f7fafc; border-top: none; height: 22px; }
     tr.row-owner td.col-no   { background: #edf2f7; }
     tr.row-owner td.col-item { background: #edf2f7; font-size: 10px; color: #666; }
 
-    /* ステータス行 */
     tr.row-status td { background: #f7fafc; border-top: none; height: 22px; }
-    tr.row-status td.col-no  { background: #edf2f7; }
+    tr.row-status td.col-no   { background: #edf2f7; }
     tr.row-status td.col-item { background: #edf2f7; font-size: 10px; color: #666; }
 
-    /* 出荷日行 */
     tr.row-shipping td { background: #fffbeb; font-weight: bold; }
-    tr.row-shipping td.col-no { background: #fef3c7; }
+    tr.row-shipping td.col-no   { background: #fef3c7; }
     tr.row-shipping td.col-item { background: #fef3c7; }
     tr.row-shipping td.cell-date { color: #b45309; font-size: 13px; }
 
-    /* linked（全体工程表と連携）セル */
     td.linked { background: #ebf8ff; }
 
-    /* ─── ステータスラベル ─────────────────────────────── */
     .status-label {
       display: inline-block;
       font-size: 11px;
@@ -151,48 +170,105 @@
     .status-label.lbl-done { background: #e2e8f0; color: #888; }
     .status-label.lbl-na   { color: #888; }
 
-    /* 担当者セル */
-    td.cell-owner {
-      min-width: 90px;
-      max-width: 90px;
-      font-size: 11px;
-      color: #444;
-      cursor: pointer;
-    }
-
-    /* 作業中: ステータスセル全体を塗りつぶし */
-    tr.row-status td.proc-wip { background: #b7eb8f !important; }
-
-    /* 完了: 日付セルグレーアウト */
-    td.cell-date.proc-done {
-      background: #e8e8e8 !important;
-      color: #bbb;
-    }
+    tr.row-status td.proc-wip  { background: #b7eb8f !important; }
+    td.cell-date.proc-done     { background: #e8e8e8 !important; color: #bbb; }
     tr.row-status td.proc-done { background: #e8e8e8 !important; }
 
-    /* 対象外: 日付セルに斜線 */
     td.cell-date.proc-na { position: relative; overflow: hidden; }
     td.cell-date.proc-na::after {
       content: '';
       position: absolute;
       inset: 0;
       background-image: repeating-linear-gradient(
-        135deg,
-        transparent,
-        transparent 5px,
-        rgba(100,100,100,0.3) 5px,
-        rgba(100,100,100,0.3) 6px
+        135deg, transparent, transparent 5px,
+        rgba(100,100,100,0.3) 5px, rgba(100,100,100,0.3) 6px
       );
       pointer-events: none;
     }
 
-    /* 空テーブル状態 */
     #no-data {
       text-align: center;
       padding: 60px;
       color: #888;
       font-size: 14px;
     }
+
+    /* ─── ガントビュー ─────────────────────────────────────── */
+    #view-gantt {
+      display: none;
+      flex-direction: column;
+      height: calc(100vh - 44px);
+    }
+    #view-gantt.active { display: flex; }
+
+    #gantt-toolbar {
+      flex-shrink: 0;
+      height: 36px;
+      background: #f7fafc;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 6px;
+    }
+    .toolbar-label { font-size: 11px; color: #666; margin-right: 2px; }
+    .zoom-btn {
+      padding: 3px 10px;
+      border: 1px solid #ccc;
+      border-radius: 3px;
+      background: white;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+    }
+    .zoom-btn.zoom-active { background: #1a3a5c; color: white; border-color: #1a3a5c; }
+    .zoom-btn:hover:not(.zoom-active) { background: #edf2f7; }
+    #btn-today {
+      margin-left: 8px;
+      padding: 3px 12px;
+      border: 1px solid #1a3a5c;
+      border-radius: 3px;
+      background: white;
+      color: #1a3a5c;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+    }
+    #btn-today:hover { background: #1a3a5c; color: white; }
+
+    /* ガントチャート凡例 */
+    .gantt-legend {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-left: auto;
+      font-size: 11px;
+      color: #555;
+    }
+    .legend-item { display: flex; align-items: center; gap: 4px; }
+    .legend-box {
+      width: 14px;
+      height: 10px;
+      border-radius: 2px;
+      border: 1px solid;
+    }
+    .legend-box.wip     { background: #68d391; border-color: #38a169; }
+    .legend-box.done    { background: #a0aec0; border-color: #718096; }
+    .legend-box.na      { background: #e2e8f0; border-color: #cbd5e0; }
+    .legend-box.pending { background: #90cdf4; border-color: #3182ce; }
+
+    #gantt-container { flex: 1; overflow: hidden; }
+
+    /* ガントバーの色 */
+    .gantt_task_line.gantt-wip     { background-color: #68d391; border-color: #38a169; }
+    .gantt_task_line.gantt-done    { background-color: #a0aec0; border-color: #718096; }
+    .gantt_task_line.gantt-na      { background-color: #e2e8f0; border-color: #cbd5e0; }
+    .gantt_task_line.gantt-pending { background-color: #90cdf4; border-color: #3182ce; }
+    .gantt_task_line.gantt-project { background-color: #2d6a9f; border-color: #1a3a5c; height: 14px !important; margin-top: 7px !important; }
+
+    /* 今日マーカー */
+    .gantt_marker.today-line { background-color: rgba(200,50,50,0.6); }
+    .gantt_marker_content { font-size: 10px; color: #c00; padding: 0 2px; }
 
     /* ─── 編集ポップアップ ─────────────────────────────── */
     #edit-popup {
@@ -265,9 +341,13 @@
 
 <header>
   <h1>電気工程確認表</h1>
+  <div class="tab-group">
+    <button class="tab-btn active" id="tab-table">表形式</button>
+    <button class="tab-btn" id="tab-gantt">ガントチャート</button>
+  </div>
 </header>
 
-<!-- 編集ポップアップ -->
+<!-- 編集ポップアップ（表・ガント共通） -->
 <div id="edit-popup">
   <div class="popup-box">
     <div class="popup-header">
@@ -304,13 +384,34 @@
   </div>
 </div>
 
-<div id="table-gap"></div>
-<div id="table-wrapper">
-  <div id="no-data" style="display:none">表示できるプロジェクトがありません</div>
-  <table id="main-table" style="display:none">
-    <thead id="thead"></thead>
-    <tbody id="tbody"></tbody>
-  </table>
+<!-- 表ビュー -->
+<div id="view-table">
+  <div id="table-gap"></div>
+  <div id="table-wrapper">
+    <div id="no-data" style="display:none">表示できるプロジェクトがありません</div>
+    <table id="main-table" style="display:none">
+      <thead id="thead"></thead>
+      <tbody id="tbody"></tbody>
+    </table>
+  </div>
+</div>
+
+<!-- ガントビュー -->
+<div id="view-gantt">
+  <div id="gantt-toolbar">
+    <span class="toolbar-label">表示単位:</span>
+    <button class="zoom-btn" id="zoom-day">日</button>
+    <button class="zoom-btn zoom-active" id="zoom-week">週</button>
+    <button class="zoom-btn" id="zoom-month">月</button>
+    <button id="btn-today">今日へ移動</button>
+    <div class="gantt-legend">
+      <span class="legend-item"><span class="legend-box pending"></span>未設定</span>
+      <span class="legend-item"><span class="legend-box wip"></span>作業中</span>
+      <span class="legend-item"><span class="legend-box done"></span>完了</span>
+      <span class="legend-item"><span class="legend-box na"></span>対象外</span>
+    </div>
+  </div>
+  <div id="gantt-container"></div>
 </div>
 
 <script>
@@ -353,47 +454,39 @@
     電装: ['木村(至)', '木村(圭)', '守時', '外注'],
   };
   const ALL_OWNERS = [
-    ...DEPT_OWNERS.営業,
-    ...DEPT_OWNERS.設計,
-    ...DEPT_OWNERS.電技,
-    ...DEPT_OWNERS.操業,
-    ...DEPT_OWNERS.電装,
+    ...DEPT_OWNERS.営業, ...DEPT_OWNERS.設計, ...DEPT_OWNERS.電技,
+    ...DEPT_OWNERS.操業, ...DEPT_OWNERS.電装,
   ];
   const PROCESS_OWNERS = {
      1: DEPT_OWNERS.営業,
-     2: DEPT_OWNERS.設計,
-     3: DEPT_OWNERS.設計,
+     2: DEPT_OWNERS.設計,  3: DEPT_OWNERS.設計,
      4: DEPT_OWNERS.電技,
-     5: DEPT_OWNERS.設計,
-     6: DEPT_OWNERS.設計,
+     5: DEPT_OWNERS.設計,  6: DEPT_OWNERS.設計,
      7: ALL_OWNERS,
-     8: DEPT_OWNERS.電技,
-     9: DEPT_OWNERS.電技,
+     8: DEPT_OWNERS.電技,  9: DEPT_OWNERS.電技,
     10: DEPT_OWNERS.設計,
     11: DEPT_OWNERS.電技,
     12: DEPT_OWNERS.操業,
-    13: DEPT_OWNERS.電技,
-    14: DEPT_OWNERS.電技,
-    15: DEPT_OWNERS.電技,
+    13: DEPT_OWNERS.電技, 14: DEPT_OWNERS.電技, 15: DEPT_OWNERS.電技,
     16: DEPT_OWNERS.電装,
-    17: DEPT_OWNERS.電技,
-    18: DEPT_OWNERS.電技,
-    19: DEPT_OWNERS.電装,
-    20: DEPT_OWNERS.電装,
-    21: DEPT_OWNERS.操業,
-    22: DEPT_OWNERS.操業,
+    17: DEPT_OWNERS.電技, 18: DEPT_OWNERS.電技,
+    19: DEPT_OWNERS.電装, 20: DEPT_OWNERS.電装,
+    21: DEPT_OWNERS.操業, 22: DEPT_OWNERS.操業,
   };
 
   // ─── モジュールレベルの状態 ──────────────────────────────
-  let statusMap = {}; // "projNum__machine__procNo" → { status, start_date, end_date, tantousha }
+  let statusMap = {};        // "projNum__machine__procNo" → { status, start_date, end_date, tantousha }
+  let currentProjects = [];
+  let currentLinkedMap = {};
   let editCtx = null;
+  let ganttInitialized = false;
 
-  // ─── 日付フォーマット ─────────────────────────────────
+  // ─── ユーティリティ ─────────────────────────────────────
   function fmtDate(dateStr) {
     if (!dateStr) return '';
-    const d = new Date(dateStr);
-    if (isNaN(d)) return '';
-    return `${String(d.getFullYear()).slice(-2)}/${String(d.getMonth()+1).padStart(2,'0')}/${String(d.getDate()).padStart(2,'0')}`;
+    const parts = String(dateStr).split('T')[0].split('-');
+    if (parts.length !== 3) return '';
+    return `${parts[0].slice(-2)}/${parts[1]}/${parts[2]}`;
   }
 
   function fmtDateRange(start, end) {
@@ -404,8 +497,36 @@
     return '';
   }
 
+  function getStatusClass(status) {
+    return { '作業中': 'wip', '完了': 'done', '対象外': 'na' }[status] || 'pending';
+  }
+
+  function parseLocalDate(str) {
+    if (!str) return null;
+    const [y, m, d] = str.split('-').map(Number);
+    return new Date(y, m - 1, d);
+  }
+
+  // ─── タブ切替 ────────────────────────────────────────────
+  document.getElementById('tab-table').addEventListener('click', () => {
+    document.getElementById('tab-table').classList.add('active');
+    document.getElementById('tab-gantt').classList.remove('active');
+    document.getElementById('view-table').style.display = '';
+    document.getElementById('view-gantt').classList.remove('active');
+  });
+
+  document.getElementById('tab-gantt').addEventListener('click', () => {
+    document.getElementById('tab-gantt').classList.add('active');
+    document.getElementById('tab-table').classList.remove('active');
+    document.getElementById('view-table').style.display = 'none';
+    document.getElementById('view-gantt').classList.add('active');
+    showGantt();
+  });
+
   // ─── ポップアップ操作 ─────────────────────────────────
-  function openPopup({ projNum, machine, procNo, procName, dateTd, statusTd, statusSpan, ownerSpan, dateRangeSpan }) {
+  function openPopup({ projNum, machine, procNo, procName,
+                       dateTd, statusTd, statusSpan, ownerSpan, dateRangeSpan,
+                       source, ganttId }) {
     const key = `${projNum}__${machine}__${procNo}`;
     const rec = statusMap[key] || {};
 
@@ -419,13 +540,14 @@
     ownerSel.innerHTML = '<option value="">─</option>';
     (PROCESS_OWNERS[procNo] || []).forEach(name => {
       const o = document.createElement('option');
-      o.value = name;
-      o.textContent = name;
+      o.value = name; o.textContent = name;
       ownerSel.appendChild(o);
     });
     ownerSel.value = rec.tantousha || '';
 
-    editCtx = { projNum, machine, procNo, key, dateTd, statusTd, statusSpan, ownerSpan, dateRangeSpan };
+    editCtx = { projNum, machine, procNo, key,
+                dateTd, statusTd, statusSpan, ownerSpan, dateRangeSpan,
+                source: source || 'table', ganttId: ganttId || null };
     document.getElementById('edit-popup').classList.add('active');
   }
 
@@ -434,21 +556,16 @@
     editCtx = null;
   }
 
-  // 背景クリックで閉じる
   document.getElementById('edit-popup').addEventListener('click', e => {
     if (e.target === document.getElementById('edit-popup')) closePopup();
   });
-
   document.getElementById('popup-cancel').addEventListener('click', closePopup);
-
-  document.addEventListener('keydown', e => {
-    if (e.key === 'Escape') closePopup();
-  });
+  document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
 
   document.getElementById('popup-save').addEventListener('click', async () => {
     if (!editCtx) return;
 
-    const status    = document.getElementById('popup-status').value;
+    const status     = document.getElementById('popup-status').value;
     const start_date = document.getElementById('popup-start').value || null;
     const end_date   = document.getElementById('popup-end').value   || null;
     const tantousha  = document.getElementById('popup-owner').value || null;
@@ -463,23 +580,43 @@
       statusMap[editCtx.key] = { status, start_date, end_date, tantousha };
     }
 
-    // DOM 更新
-    applyStatusStyle(editCtx.dateTd, editCtx.statusTd, editCtx.statusSpan, status);
-    if (editCtx.ownerSpan)     editCtx.ownerSpan.textContent = tantousha || '';
-    if (editCtx.dateRangeSpan) editCtx.dateRangeSpan.textContent = fmtDateRange(start_date, end_date);
+    if (editCtx.source === 'gantt' && editCtx.ganttId) {
+      // ガントタスクを更新
+      try {
+        const task = gantt.getTask(editCtx.ganttId);
+        if (task) {
+          task.owner       = tantousha || '';
+          task.statusClass = getStatusClass(status);
+          task.statusLabel = status || '';
+          task.start_date_str = start_date || task.start_date_str;
+          task.end_date_str   = end_date || null;
+          if (start_date) task.start_date = parseLocalDate(start_date);
+          if (end_date) {
+            const endD = parseLocalDate(end_date);
+            endD.setDate(endD.getDate() + 1);
+            task.end_date = endD;
+            task.duration = Math.round((endD - task.start_date) / 86400000);
+          } else {
+            task.duration = 1;
+          }
+          gantt.updateTask(editCtx.ganttId);
+        }
+      } catch(e) { console.warn('Gantt update:', e); }
+    } else {
+      // テーブルDOMを更新
+      applyStatusStyle(editCtx.dateTd, editCtx.statusTd, editCtx.statusSpan, status);
+      if (editCtx.ownerSpan)     editCtx.ownerSpan.textContent = tantousha || '';
+      if (editCtx.dateRangeSpan) editCtx.dateRangeSpan.textContent = fmtDateRange(start_date, end_date);
+    }
 
     closePopup();
   });
 
   // ─── メイン処理 ───────────────────────────────────────
   async function init() {
-    // 1. 完了済み工番を取得
-    const { data: completedData } = await sb
-      .from('completed_projects')
-      .select('project_number');
+    const { data: completedData } = await sb.from('completed_projects').select('project_number');
     const completedNums = new Set((completedData || []).map(c => String(c.project_number)));
 
-    // 2. プロジェクト一覧を取得（工場出荷タスクから）
     const { data: shipTasks, error: e1 } = await sb
       .from('tasks')
       .select('project_number, machine, customer_name, start_date')
@@ -488,9 +625,8 @@
 
     if (e1) { console.error(e1); hideLoading(); return; }
 
-    // 重複排除＋完了済みを除外
     const seen = new Set();
-    const projects = (shipTasks || []).filter(p => {
+    currentProjects = (shipTasks || []).filter(p => {
       if (completedNums.has(String(p.project_number))) return false;
       const key = `${p.project_number}__${p.machine}`;
       if (seen.has(key)) return false;
@@ -498,15 +634,14 @@
       return true;
     });
 
-    if (projects.length === 0) {
+    if (currentProjects.length === 0) {
       hideLoading();
       document.getElementById('no-data').style.display = 'block';
       return;
     }
 
-    // 3. 連携工程の日付を一括取得
-    const linkedTexts = PROCESSES.filter(p => p.linked).map(p => p.taskText);
-    const projectNumbers = [...new Set(projects.map(p => p.project_number))];
+    const linkedTexts   = PROCESSES.filter(p => p.linked).map(p => p.taskText);
+    const projectNumbers = [...new Set(currentProjects.map(p => p.project_number))];
 
     const { data: linkedTasks } = await sb
       .from('tasks')
@@ -514,13 +649,12 @@
       .in('project_number', projectNumbers)
       .in('text', linkedTexts);
 
-    const linkedMap = {};
+    currentLinkedMap = {};
     (linkedTasks || []).forEach(t => {
       const key = `${t.project_number}__${t.machine}__${t.text}`;
-      if (!linkedMap[key]) linkedMap[key] = t.start_date;
+      if (!currentLinkedMap[key]) currentLinkedMap[key] = t.start_date;
     });
 
-    // customer_name が空の工番を補完
     const { data: custData } = await sb
       .from('tasks')
       .select('project_number, customer_name')
@@ -530,11 +664,10 @@
     (custData || []).forEach(t => {
       if (t.customer_name && !custMap[t.project_number]) custMap[t.project_number] = t.customer_name;
     });
-    projects.forEach(p => {
+    currentProjects.forEach(p => {
       if (!p.customer_name) p.customer_name = custMap[p.project_number];
     });
 
-    // 4. 進捗状況を取得（新カラム含む）
     statusMap = {};
     try {
       const { data: statusData } = await sb
@@ -548,19 +681,18 @@
           tantousha:  s.tantousha,
         };
       });
-    } catch(e) { /* テーブル未作成の場合は無視 */ }
+    } catch(e) { /* ignore */ }
 
-    // 5. 描画
-    renderTable(projects, linkedMap);
+    renderTable(currentProjects, currentLinkedMap);
     document.getElementById('main-table').style.display = '';
     hideLoading();
   }
 
+  // ─── 表レンダリング ───────────────────────────────────
   function renderTable(projects, linkedMap) {
     const thead = document.getElementById('thead');
     const tbody = document.getElementById('tbody');
 
-    // ─── ヘッダー（3行）───
     const projectGroups = [];
     let prevNum = null;
     projects.forEach(p => {
@@ -619,23 +751,16 @@
       thead.appendChild(tr);
     }
 
-    // ─── ボディ（工程行）───
     tbody.innerHTML = '';
 
     PROCESSES.forEach(proc => {
       // 日付行
       const trDate = document.createElement('tr');
       trDate.className = 'row-date';
-
-      const tdNo = document.createElement('td');
-      tdNo.className = 'col-no';
-      tdNo.textContent = proc.no;
-      trDate.appendChild(tdNo);
-
-      const tdItem = document.createElement('td');
-      tdItem.className = 'col-item';
-      tdItem.textContent = proc.name;
+      const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = proc.no;
+      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = proc.name;
       if (proc.linked) tdItem.title = '全体工程表と連携';
+      trDate.appendChild(tdNo);
       trDate.appendChild(tdItem);
 
       const dateTds = [];
@@ -645,7 +770,6 @@
         const td = document.createElement('td');
         td.className = 'cell-date' + (proc.linked ? ' linked' : '');
         td.title = 'ダブルクリックで編集';
-
         if (proc.linked) {
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           td.textContent = fmtDate(linkedMap[key]);
@@ -658,55 +782,40 @@
           td.appendChild(span);
           dateRangeSpans.push(span);
         }
-
         dateTds.push(td);
         trDate.appendChild(td);
       });
-
       tbody.appendChild(trDate);
 
       // 担当者行
       const trOwner = document.createElement('tr');
       trOwner.className = 'row-owner';
-
-      const tdNoO = document.createElement('td');
-      tdNoO.className = 'col-no';
+      const tdNoO = document.createElement('td'); tdNoO.className = 'col-no';
+      const tdItemO = document.createElement('td'); tdItemO.className = 'col-item'; tdItemO.textContent = '担当者';
       trOwner.appendChild(tdNoO);
-
-      const tdItemO = document.createElement('td');
-      tdItemO.className = 'col-item';
-      tdItemO.textContent = '担当者';
       trOwner.appendChild(tdItemO);
 
       const ownerSpans = [];
-
-      projects.forEach((proj, pi) => {
+      projects.forEach(proj => {
         const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
         const rec = statusMap[statusKey] || {};
-
         const td = document.createElement('td');
         td.className = 'cell-owner';
         td.title = 'ダブルクリックで編集';
-
         const span = document.createElement('span');
         span.textContent = rec.tantousha || '';
         td.appendChild(span);
         ownerSpans.push(span);
         trOwner.appendChild(td);
       });
-
       tbody.appendChild(trOwner);
 
       // ステータス行
       const trStatus = document.createElement('tr');
       trStatus.className = 'row-status';
-
-      const tdNoS = document.createElement('td');
-      tdNoS.className = 'col-no';
+      const tdNoS = document.createElement('td'); tdNoS.className = 'col-no';
+      const tdItemS = document.createElement('td'); tdItemS.className = 'col-item';
       trStatus.appendChild(tdNoS);
-
-      const tdItemS = document.createElement('td');
-      tdItemS.className = 'col-item';
       trStatus.appendChild(tdItemS);
 
       projects.forEach((proj, pi) => {
@@ -720,7 +829,6 @@
 
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
-
         applyStatusStyle(dateTd, td, statusSpan, rec.status || '');
         td.appendChild(statusSpan);
 
@@ -734,6 +842,7 @@
           statusSpan,
           ownerSpan:     ownerSpans[pi],
           dateRangeSpan: dateRangeSpans[pi],
+          source:        'table',
         });
 
         td.addEventListener('dblclick', openEdit);
@@ -742,31 +851,22 @@
 
         trStatus.appendChild(td);
       });
-
       tbody.appendChild(trStatus);
     });
 
-    // ─── 出荷日行 ───
+    // 出荷日行
     const trShip = document.createElement('tr');
     trShip.className = 'row-shipping';
-
-    const tdNoShip = document.createElement('td');
-    tdNoShip.className = 'col-no';
-    tdNoShip.textContent = '23';
+    const tdNoShip = document.createElement('td'); tdNoShip.className = 'col-no'; tdNoShip.textContent = '23';
+    const tdItemShip = document.createElement('td'); tdItemShip.className = 'col-item'; tdItemShip.textContent = '工場出荷日';
     trShip.appendChild(tdNoShip);
-
-    const tdItemShip = document.createElement('td');
-    tdItemShip.className = 'col-item';
-    tdItemShip.textContent = '工場出荷日';
     trShip.appendChild(tdItemShip);
-
     projects.forEach(proj => {
       const td = document.createElement('td');
       td.className = 'cell-date linked';
       td.textContent = fmtDate(proj.start_date);
       trShip.appendChild(td);
     });
-
     tbody.appendChild(trShip);
   }
 
@@ -780,7 +880,6 @@
     statusSpan.className = 'status-label';
     statusSpan.textContent = status || '';
     statusSpan.style.display = status ? '' : 'none';
-
     switch (status) {
       case '完了':
         dateTd.classList.add('proc-done');
@@ -802,24 +901,205 @@
     const pn = String(projNum);
     const mc = machine || '';
     const isEmpty = !status && !start_date && !end_date && !tantousha;
-
     try {
       if (isEmpty) {
-        await sb.from('denki_process_status')
-          .delete()
-          .eq('project_number', pn)
-          .eq('machine', mc)
-          .eq('process_no', procNo);
+        await sb.from('denki_process_status').delete()
+          .eq('project_number', pn).eq('machine', mc).eq('process_no', procNo);
       } else {
         await sb.from('denki_process_status').upsert(
-          { project_number: pn, machine: mc, process_no: procNo, status: status || null, start_date, end_date, tantousha },
+          { project_number: pn, machine: mc, process_no: procNo,
+            status: status || null, start_date, end_date, tantousha },
           { onConflict: 'project_number,machine,process_no' }
         );
       }
-    } catch(e) {
-      console.warn('保存エラー:', e);
+    } catch(e) { console.warn('保存エラー:', e); }
+  }
+
+  // ─── ガントチャート ───────────────────────────────────
+  function initGantt() {
+    gantt.config.date_format = '%Y-%m-%d';
+    gantt.config.scale_height = 48;
+    gantt.config.row_height   = 28;
+    gantt.config.task_height  = 18;
+    gantt.config.min_column_width = 70;
+    gantt.config.fit_tasks = false;
+    gantt.config.drag_move    = false;
+    gantt.config.drag_resize  = false;
+    gantt.config.drag_progress = false;
+    gantt.config.details_on_dblclick = false;
+
+    gantt.config.scales = [
+      { unit: 'month', step: 1, format: '%Y年%m月' },
+      { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}` },
+    ];
+
+    gantt.config.columns = [
+      { name: 'text',   label: '工番 / 機種 / 工程名', width: 230, tree: true },
+      { name: 'owner',  label: '担当者', width: 75, align: 'center' },
+      {
+        name: 'start_disp', label: '開始日', width: 70, align: 'center',
+        template: t => t.type === gantt.config.types.project ? '' : fmtDate(t.start_date_str || ''),
+      },
+      {
+        name: 'end_disp', label: '終了日', width: 70, align: 'center',
+        template: t => t.type === gantt.config.types.project ? '' : fmtDate(t.end_date_str || ''),
+      },
+    ];
+
+    gantt.templates.task_class = (start, end, task) => {
+      if (task.type === gantt.config.types.project) return 'gantt-project';
+      return `gantt-${task.statusClass || 'pending'}`;
+    };
+
+    gantt.templates.task_text = (start, end, task) => {
+      if (task.type === gantt.config.types.project) return '';
+      return task.owner ? `<span style="font-size:10px">${task.owner}</span>` : '';
+    };
+
+    gantt.templates.tooltip_text = (start, end, task) => {
+      if (task.type === gantt.config.types.project) return `<b>${task.text}</b>`;
+      return `<b>${task.text}</b><br>` +
+        `担当: ${task.owner || '─'}<br>` +
+        `状態: ${task.statusLabel || '─'}<br>` +
+        `開始: ${fmtDate(task.start_date_str || '')}<br>` +
+        `終了: ${fmtDate(task.end_date_str || '')}`;
+    };
+
+    gantt.attachEvent('onBeforeLightbox', () => false);
+
+    gantt.attachEvent('onTaskDblClick', (id) => {
+      const task = gantt.getTask(id);
+      if (!task || task.type === gantt.config.types.project) return false;
+      openPopup({
+        projNum:  task.projNum,
+        machine:  task.machine,
+        procNo:   task.procNo,
+        procName: task.procName,
+        source:   'gantt',
+        ganttId:  id,
+        dateTd: null, statusTd: null, statusSpan: null, ownerSpan: null, dateRangeSpan: null,
+      });
+      return false;
+    });
+
+    gantt.addMarker({
+      start_date: new Date(),
+      css:   'today-line',
+      title: '今日',
+    });
+
+    gantt.init('gantt-container');
+  }
+
+  function buildGanttData() {
+    const tasks = [];
+
+    currentProjects.forEach(proj => {
+      const parentId = `${proj.project_number}__${proj.machine || ''}`;
+      const children = [];
+
+      PROCESSES.forEach(proc => {
+        const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
+        const rec = statusMap[key] || {};
+
+        let startDate = rec.start_date;
+        let endDate   = rec.end_date;
+
+        // 連携工程はリンク日付をフォールバック
+        if (!startDate && proc.linked) {
+          const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
+          startDate = currentLinkedMap[lk];
+        }
+
+        if (!startDate) return;
+
+        const duration = endDate
+          ? Math.max(1, Math.round((parseLocalDate(endDate) - parseLocalDate(startDate)) / 86400000) + 1)
+          : 1;
+
+        children.push({
+          id:          `${parentId}__${proc.no}`,
+          text:        `${proc.no}. ${proc.name}`,
+          start_date:  startDate,
+          duration,
+          parent:      parentId,
+          owner:       rec.tantousha || '',
+          statusClass: getStatusClass(rec.status),
+          statusLabel: rec.status || '',
+          start_date_str: startDate,
+          end_date_str:   endDate || null,
+          projNum:  proj.project_number,
+          machine:  proj.machine || '',
+          procNo:   proc.no,
+          procName: proc.name,
+        });
+      });
+
+      if (children.length === 0) return;
+
+      const earliest = children.reduce((m, t) => t.start_date < m ? t.start_date : m, children[0].start_date);
+
+      tasks.push({
+        id:         parentId,
+        text:       `${proj.project_number}　${proj.machine || ''}　${proj.customer_name || ''}`,
+        start_date: earliest,
+        duration:   1,
+        type:       gantt.config.types.project,
+        open:       false,
+      });
+      tasks.push(...children);
+    });
+
+    return { data: tasks, links: [] };
+  }
+
+  function showGantt() {
+    if (!ganttInitialized) {
+      initGantt();
+      ganttInitialized = true;
+    }
+    gantt.clearAll();
+    const data = buildGanttData();
+    if (data.data.length > 0) {
+      gantt.parse(data);
+      gantt.showDate(new Date());
     }
   }
+
+  // ─── ガントツールバー ─────────────────────────────────
+  let currentZoom = 'week';
+
+  function setZoom(unit) {
+    currentZoom = unit;
+    ['zoom-day', 'zoom-week', 'zoom-month'].forEach(id => {
+      document.getElementById(id).classList.toggle('zoom-active', id === `zoom-${unit}`);
+    });
+    if (unit === 'day') {
+      gantt.config.scales = [
+        { unit: 'month', step: 1, format: '%Y年%m月' },
+        { unit: 'day',   step: 1, format: '%d' },
+      ];
+      gantt.config.min_column_width = 40;
+    } else if (unit === 'week') {
+      gantt.config.scales = [
+        { unit: 'month', step: 1, format: '%Y年%m月' },
+        { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}` },
+      ];
+      gantt.config.min_column_width = 70;
+    } else {
+      gantt.config.scales = [
+        { unit: 'year',  step: 1, format: '%Y年' },
+        { unit: 'month', step: 1, format: '%m月' },
+      ];
+      gantt.config.min_column_width = 60;
+    }
+    gantt.render();
+  }
+
+  document.getElementById('zoom-day').addEventListener('click',   () => setZoom('day'));
+  document.getElementById('zoom-week').addEventListener('click',  () => setZoom('week'));
+  document.getElementById('zoom-month').addEventListener('click', () => setZoom('month'));
+  document.getElementById('btn-today').addEventListener('click',  () => gantt.showDate(new Date()));
 
   init();
 </script>
