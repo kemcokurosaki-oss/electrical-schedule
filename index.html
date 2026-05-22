@@ -815,7 +815,7 @@
 
       // 担当者行
       const trOwner = document.createElement('tr');
-      trOwner.className = 'row-owner';
+      trOwner.className = `row-owner${deptClass}`;
       const tdNoO = document.createElement('td'); tdNoO.className = 'col-no';
       const tdItemO = document.createElement('td'); tdItemO.className = 'col-item'; tdItemO.textContent = '担当者';
       trOwner.appendChild(tdNoO);
