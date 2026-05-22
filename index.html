@@ -780,8 +780,9 @@
 
     PROCESSES.forEach(proc => {
       // 日付行
+      const deptClass = PROCESS_DEPT[proc.no] ? ` dept-${PROCESS_DEPT[proc.no]}` : '';
       const trDate = document.createElement('tr');
-      trDate.className = 'row-date';
+      trDate.className = `row-date${deptClass}`;
       const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = proc.no;
       const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = proc.name;
       if (proc.linked) tdItem.title = '全体工程表と連携';
