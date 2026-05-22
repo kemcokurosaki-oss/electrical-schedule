@@ -151,14 +151,14 @@
     .status-label.lbl-done { background: #e2e8f0; color: #888; }
     .status-label.lbl-na   { color: #888; }
 
-    /* 担当者ラベル */
-    .owner-label {
-      font-size: 10px;
-      color: #555;
-      margin-left: 3px;
+    /* 担当者セル */
+    td.cell-owner {
+      min-width: 90px;
+      max-width: 90px;
+      font-size: 11px;
+      color: #444;
+      cursor: pointer;
     }
-    td.proc-wip .owner-label { color: #276749; }
-    td.proc-done .owner-label { color: #999; }
 
     /* 作業中: ステータスセル全体を塗りつぶし */
     tr.row-status td.proc-wip { background: #b7eb8f !important; }
