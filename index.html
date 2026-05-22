@@ -838,7 +838,7 @@
 
       // ステータス行
       const trStatus = document.createElement('tr');
-      trStatus.className = 'row-status';
+      trStatus.className = `row-status${deptClass}`;
       const tdNoS = document.createElement('td'); tdNoS.className = 'col-no';
       const tdItemS = document.createElement('td'); tdItemS.className = 'col-item';
       trStatus.appendChild(tdNoS);
