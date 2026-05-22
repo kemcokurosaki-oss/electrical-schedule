@@ -790,7 +790,7 @@
         td.title = 'ダブルクリックで編集';
         if (proc.linked) {
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-          td.textContent = fmtDate(linkedMap[key]);
+          td.textContent = fmtDate(linkedMap[key]?.start_date);
           dateRangeSpans.push(null);
         } else {
           const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
