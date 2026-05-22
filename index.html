@@ -647,12 +647,10 @@
         td.title = 'ダブルクリックで編集';
 
         if (proc.linked) {
-          // 連携工程: 全体工程表の日付を表示
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           td.textContent = fmtDate(linkedMap[key]);
           dateRangeSpans.push(null);
         } else {
-          // 非連携工程: ローカルの start_date ～ end_date を表示
           const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
           const rec = statusMap[statusKey] || {};
           const span = document.createElement('span');
@@ -666,6 +664,38 @@
       });
 
       tbody.appendChild(trDate);
+
+      // 担当者行
+      const trOwner = document.createElement('tr');
+      trOwner.className = 'row-owner';
+
+      const tdNoO = document.createElement('td');
+      tdNoO.className = 'col-no';
+      trOwner.appendChild(tdNoO);
+
+      const tdItemO = document.createElement('td');
+      tdItemO.className = 'col-item';
+      tdItemO.textContent = '担当者';
+      trOwner.appendChild(tdItemO);
+
+      const ownerSpans = [];
+
+      projects.forEach((proj, pi) => {
+        const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
+        const rec = statusMap[statusKey] || {};
+
+        const td = document.createElement('td');
+        td.className = 'cell-owner';
+        td.title = 'ダブルクリックで編集';
+
+        const span = document.createElement('span');
+        span.textContent = rec.tantousha || '';
+        td.appendChild(span);
+        ownerSpans.push(span);
+        trOwner.appendChild(td);
+      });
+
+      tbody.appendChild(trOwner);
 
       // ステータス行
       const trStatus = document.createElement('tr');
@@ -691,14 +721,8 @@
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
 
-        const ownerSpan = document.createElement('span');
-        ownerSpan.className = 'owner-label';
-        ownerSpan.textContent = rec.tantousha || '';
-
         applyStatusStyle(dateTd, td, statusSpan, rec.status || '');
-
         td.appendChild(statusSpan);
-        td.appendChild(ownerSpan);
 
         const openEdit = () => openPopup({
           projNum:       proj.project_number,
@@ -708,12 +732,13 @@
           dateTd,
           statusTd:      td,
           statusSpan,
-          ownerSpan,
+          ownerSpan:     ownerSpans[pi],
           dateRangeSpan: dateRangeSpans[pi],
         });
 
         td.addEventListener('dblclick', openEdit);
         dateTd.addEventListener('dblclick', openEdit);
+        trOwner.children[pi + 2].addEventListener('dblclick', openEdit);
 
         trStatus.appendChild(td);
       });
