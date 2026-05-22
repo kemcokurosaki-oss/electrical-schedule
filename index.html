@@ -489,6 +489,16 @@
     21: DEPT_OWNERS.操業, 22: DEPT_OWNERS.操業,
   };
 
+  // ─── 部署→クラス名マッピング ────────────────────────────
+  const PROCESS_DEPT = {
+     1: 'eigyo',
+     2: 'sekkei',  3: 'sekkei',  5: 'sekkei',  6: 'sekkei', 10: 'sekkei',
+     4: 'denki',   8: 'denki',   9: 'denki',  11: 'denki',
+    13: 'denki',  14: 'denki',  15: 'denki',  17: 'denki',  18: 'denki',
+    12: 'sosou',  21: 'sosou',  22: 'sosou',
+    16: 'denso',  19: 'denso',  20: 'denso',
+  };
+
   // ─── モジュールレベルの状態 ──────────────────────────────
   let statusMap = {};        // "projNum__machine__procNo" → { status, start_date, end_date, tantousha }
   let currentProjects = [];
