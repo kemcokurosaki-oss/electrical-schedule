@@ -818,10 +818,17 @@
         const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
         const rec = statusMap[statusKey] || {};
         const td = document.createElement('td');
-        td.className = 'cell-owner';
+        td.className = 'cell-owner' + (proc.linked ? ' linked' : '');
         td.title = 'ダブルクリックで編集';
         const span = document.createElement('span');
-        span.textContent = rec.tantousha || '';
+        let displayOwner;
+        if (proc.linked) {
+          const linkedKey = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
+          displayOwner = linkedMap[linkedKey]?.owner || '';
+        } else {
+          displayOwner = rec.tantousha || '';
+        }
+        span.textContent = displayOwner;
         td.appendChild(span);
         ownerSpans.push(span);
         trOwner.appendChild(td);
