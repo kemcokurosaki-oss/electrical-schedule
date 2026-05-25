@@ -1058,7 +1058,7 @@
     currentLinkedMap = {};
     (linkedTasks || []).forEach(t => {
       const key = `${t.project_number}__${t.machine}__${t.text}`;
-      if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '' };
+      if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '', status: t.status || '' };
     });
 
     const { data: custData } = await sb
@@ -1417,7 +1417,7 @@
       currentLinkedMap = {};
       (linkedTasks || []).forEach(t => {
         const key = `${t.project_number}__${t.machine}__${t.text}`;
-        if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '' };
+        if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '', status: t.status || '' };
       });
 
       const { data: statusData } = await sb
