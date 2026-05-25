@@ -626,6 +626,9 @@
   let editCtx = null;
   let ganttInitialized = false;
 
+  let visibleProjectNums = new Set(); // denki_visible_projects に登録された工番
+  let allAvailableProjects = [];      // 完了除外済みの全工番（管理パネル用）
+
   // ─── ユーティリティ ─────────────────────────────────────
   function fmtDate(dateStr) {
     if (!dateStr) return '';
