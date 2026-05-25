@@ -972,7 +972,7 @@
       // テーブルDOMを更新
       applyStatusStyle(editCtx.dateTd, editCtx.statusTd, editCtx.statusSpan, status);
       if (editCtx.ownerSpan)     editCtx.ownerSpan.textContent = tantousha || '';
-      if (editCtx.dateRangeSpan) editCtx.dateRangeSpan.textContent = fmtDateRange(start_date, end_date);
+      if (editCtx.dateRangeSpan) editCtx.dateRangeSpan.textContent = fmtDate(start_date);
     }
 
     closePopup();
