@@ -1060,13 +1060,11 @@
     const statusBar = document.getElementById('manage-status');
     const list = document.getElementById('manage-list');
 
-    if (visibleProjectNums.size === 0) {
-      statusBar.textContent = 'フィルターなし – 全工番を表示中';
-      statusBar.className = 'manage-status-bar filter-none';
-    } else {
-      statusBar.textContent = `フィルター有効 – ${visibleProjectNums.size}件の工番のみ表示中`;
-      statusBar.className = 'manage-status-bar filter-active';
-    }
+    const registeredCount = visibleProjectNums.size;
+    statusBar.textContent = registeredCount === 0
+      ? '登録されている工番はありません'
+      : `${registeredCount}件の工番を登録中`;
+    statusBar.className = 'manage-status-bar';
 
     list.innerHTML = '';
 
