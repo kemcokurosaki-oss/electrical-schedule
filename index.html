@@ -2021,7 +2021,7 @@
         if (proc.linked) {
           const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           startDate = currentLinkedMap[lk]?.start_date || '';
-          endDate   = '';
+          endDate   = currentLinkedMap[lk]?.end_date   || '';
           owner     = currentLinkedMap[lk]?.owner || '';
         } else {
           startDate = rec.start_date || '';
