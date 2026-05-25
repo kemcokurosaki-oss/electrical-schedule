@@ -451,10 +451,30 @@
     /* ─── flatpickr カスタム ─────────────────────────── */
     .flatpickr-calendar {
       font-family: 'Meiryo', 'メイリオ', sans-serif;
-      font-size: 12px;
-      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
-      border-radius: 6px;
+      font-size: 11px;
+      box-shadow: 0 6px 20px rgba(0,0,0,0.2);
+      border-radius: 5px;
+      width: auto !important;
     }
+    .flatpickr-calendar.multiMonth .flatpickr-days .dayContainer {
+      min-width: 168px !important;
+      max-width: 168px !important;
+      width: 168px !important;
+    }
+    .flatpickr-day {
+      max-width: 24px !important;
+      height: 24px !important;
+      line-height: 24px !important;
+      font-size: 11px !important;
+    }
+    .flatpickr-weeks { display: none !important; }
+    .flatpickr-months { height: 30px; }
+    .flatpickr-months .flatpickr-month { height: 30px; line-height: 30px; }
+    .flatpickr-current-month { font-size: 12px; padding-top: 5px; }
+    .flatpickr-current-month .flatpickr-monthDropdown-months { font-size: 12px; }
+    .flatpickr-current-month input.cur-year { font-size: 12px; }
+    .flatpickr-weekday { font-size: 10px !important; height: 22px; line-height: 22px; }
+    .flatpickr-innerContainer { padding: 4px 6px 6px; }
     .flatpickr-day.selected,
     .flatpickr-day.startRange,
     .flatpickr-day.endRange {
@@ -471,7 +491,7 @@
     .flatpickr-current-month .flatpickr-monthDropdown-months { background: #1a3a5c; }
     .flatpickr-weekday { background: #2c5282; color: #a0c4e8; font-weight: bold; }
     .flatpickr-months .flatpickr-prev-month,
-    .flatpickr-months .flatpickr-next-month { fill: white; color: white; }
+    .flatpickr-months .flatpickr-next-month { fill: white; color: white; padding: 5px 8px; }
     /* 範囲選択ラベル */
     #fp-range-label {
       position: fixed;
@@ -479,7 +499,7 @@
       background: #1a3a5c;
       color: white;
       font-size: 11px;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 4px 4px 0 0;
       z-index: 99999;
       pointer-events: none;
