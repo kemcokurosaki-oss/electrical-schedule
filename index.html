@@ -1852,7 +1852,7 @@
   function openDetailView(projNum) {
     currentDetailProjNum = String(projNum);
     document.getElementById('view-table').style.display = 'none';
-    document.getElementById('view-detail').style.display = '';
+    document.getElementById('view-detail').style.display = 'block';
     renderDetailTable(projNum);
     updateDetailButtons();
   }
