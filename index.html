@@ -1530,8 +1530,9 @@
       await saveRecord(proj.project_number, proj.machine || '', proc.no, {
         status: curRec.status || null, start_date: curRec.start_date || null,
         end_date: curRec.end_date || null, tantousha: newOwner || null,
+        memo: curRec.memo || null,
       });
-      const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !newOwner;
+      const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !newOwner && !curRec.memo;
       if (isEmpty) delete statusMap[key];
       else statusMap[key] = { ...curRec, tantousha: newOwner };
     });
