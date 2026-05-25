@@ -635,8 +635,10 @@
       resize: none;
       background: transparent;
       box-sizing: border-box;
+      cursor: default;
     }
-    .detail-memo:focus { outline: none; background: white; }
+    .detail-memo:not([readonly]) { cursor: text; }
+    .detail-memo:focus:not([readonly]) { outline: none; background: white; }
 
     /* 部署別カラー（詳細ビュー） */
     .detail-table tr.dept-eigyo  td.col-no, .detail-table tr.dept-eigyo  td.col-item { background: #FDE8C8 !important; }
