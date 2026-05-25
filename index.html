@@ -1043,13 +1043,14 @@
     try {
       const { data: statusData } = await sb
         .from('denki_process_status')
-        .select('project_number, machine, process_no, status, start_date, end_date, tantousha');
+        .select('project_number, machine, process_no, status, start_date, end_date, tantousha, memo');
       (statusData || []).forEach(s => {
         statusMap[`${s.project_number}__${s.machine}__${s.process_no}`] = {
           status:     s.status,
           start_date: s.start_date,
           end_date:   s.end_date,
           tantousha:  s.tantousha,
+          memo:       s.memo,
         };
       });
     } catch(e) { /* ignore */ }
