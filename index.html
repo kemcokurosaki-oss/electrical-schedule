@@ -1164,7 +1164,7 @@
           const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
           const rec = statusMap[statusKey] || {};
           const span = document.createElement('span');
-          span.textContent = fmtDateRange(rec.start_date, rec.end_date);
+          span.textContent = fmtDate(rec.start_date);
           td.appendChild(span);
           dateRangeSpans.push(span);
         }
