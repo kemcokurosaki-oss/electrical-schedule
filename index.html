@@ -1110,10 +1110,12 @@
         btn.disabled = true;
         btn.textContent = '...';
         if (isVisible) {
-          await sb.from('denki_visible_projects').delete().eq('project_number', pn);
+          const { error } = await sb.from('denki_visible_projects').delete().eq('project_number', pn);
+          if (error) { alert('削除に失敗しました: ' + error.message); btn.disabled = false; btn.textContent = '削除'; return; }
           visibleProjectNums.delete(pn);
         } else {
-          await sb.from('denki_visible_projects').upsert({ project_number: pn });
+          const { error } = await sb.from('denki_visible_projects').insert({ project_number: pn });
+          if (error) { alert('追加に失敗しました: ' + error.message); btn.disabled = false; btn.textContent = '追加'; return; }
           visibleProjectNums.add(pn);
         }
         renderManageList();
