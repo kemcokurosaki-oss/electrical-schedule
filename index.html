@@ -1195,7 +1195,6 @@
       projects.forEach(proj => {
         const td = document.createElement('td');
         td.className = 'cell-date' + (proc.linked ? ' linked' : '');
-        if (!proc.linked) td.title = 'ダブルクリックで編集';
         if (proc.linked) {
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           td.textContent = fmtDate(linkedMap[key]?.start_date);
