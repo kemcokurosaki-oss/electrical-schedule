@@ -1144,9 +1144,7 @@
   async function refreshDisplay() {
     showLoading();
 
-    currentProjects = visibleProjectNums.size > 0
-      ? allAvailableProjects.filter(p => visibleProjectNums.has(String(p.project_number)))
-      : allAvailableProjects;
+    currentProjects = allAvailableProjects.filter(p => visibleProjectNums.has(String(p.project_number)));
 
     if (currentProjects.length > 0) {
       const linkedTexts   = PROCESSES.filter(p => p.linked).map(p => p.taskText);
