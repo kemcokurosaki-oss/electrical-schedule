@@ -1008,7 +1008,7 @@
         td.appendChild(statusSpan);
 
         if (!proc.linked) {
-          td.title = 'クリックで編集';
+          td.title = 'ダブルクリックで編集';
           td.addEventListener('dblclick', () => editStatusCell(td, dateTd, proj, proc));
           dateTd.addEventListener('dblclick', () => editDateCell(dateTd, proj, proc));
           const ownerTd = trOwner.children[pi + 2];
