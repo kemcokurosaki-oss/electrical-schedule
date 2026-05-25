@@ -887,6 +887,18 @@
     return new Date(y, m - 1, d);
   }
 
+  function calcLinkedStatus(startDate, endDate) {
+    if (!startDate) return '';
+    const today = new Date(); today.setHours(0, 0, 0, 0);
+    const start = parseLocalDate(startDate);
+    if (!start || today < start) return '';
+    if (endDate) {
+      const end = parseLocalDate(endDate);
+      if (end && today > end) return '完了';
+    }
+    return '作業中';
+  }
+
   // ─── タブ切替 ────────────────────────────────────────────
   document.getElementById('btn-detail-back').addEventListener('click', () => closeDetailView());
 
