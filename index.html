@@ -2072,15 +2072,11 @@
         trOwner.appendChild(tdOwner);
 
         if (!proc.linked) {
-          tdStart.title = 'ダブルクリックで日付編集';
-          tdEnd.title   = 'ダブルクリックで日付編集';
           tdStart.addEventListener('dblclick', () => editDetailDateCell(tdStart, tdEnd, proj, proc));
           tdEnd.addEventListener('dblclick',   () => editDetailDateCell(tdStart, tdEnd, proj, proc));
 
-          tdStatus.title = 'ダブルクリックでステータス編集';
           tdStatus.addEventListener('dblclick', () => editStatusCell(tdStatus, tdStart, proj, proc));
 
-          tdOwner.title = 'ダブルクリックで担当者編集';
           tdOwner.addEventListener('dblclick', () => editOwnerCell(tdOwner, proj, proc));
         }
 
