@@ -1950,43 +1950,55 @@
     table.className = 'detail-table';
     const thead = document.createElement('thead');
 
-    // ヘッダー行1: 機種名
-    const tr1 = document.createElement('tr');
-    const thNo1 = document.createElement('th'); thNo1.className = 'col-no'; thNo1.rowSpan = 2; thNo1.textContent = 'No.'; tr1.appendChild(thNo1);
-    const thItem1 = document.createElement('th'); thItem1.className = 'col-item'; thItem1.rowSpan = 2; thItem1.textContent = '工程名'; tr1.appendChild(thItem1);
+    // ヘッダー行1: 機種名（各機種は3列: 開始日・終了日・メモ）
+    const htr1 = document.createElement('tr');
+    const hthNo = document.createElement('th'); hthNo.className = 'col-no'; hthNo.rowSpan = 2; hthNo.textContent = 'No.'; htr1.appendChild(hthNo);
+    const hthItem = document.createElement('th'); hthItem.className = 'col-item'; hthItem.rowSpan = 2; hthItem.textContent = '工程名'; htr1.appendChild(hthItem);
     projsForNum.forEach(proj => {
       const th = document.createElement('th');
-      th.colSpan = 5;
+      th.colSpan = 3;
       th.className = 'header-machine-group';
       th.textContent = `機種: ${proj.machine || '─'}`;
-      tr1.appendChild(th);
+      htr1.appendChild(th);
     });
-    thead.appendChild(tr1);
+    thead.appendChild(htr1);
 
-    // ヘッダー行2: 各列ラベル
-    const tr2 = document.createElement('tr');
+    // ヘッダー行2: 開始日・終了日・メモ
+    const htr2 = document.createElement('tr');
     projsForNum.forEach(() => {
-      ['開始日', '終了日', '担当者', 'ステータス', 'メモ'].forEach(lbl => {
+      ['開始日', '終了日', 'メモ'].forEach(lbl => {
         const th = document.createElement('th');
         th.textContent = lbl;
         th.style.fontSize = '11px';
-        tr2.appendChild(th);
+        htr2.appendChild(th);
       });
     });
-    thead.appendChild(tr2);
+    thead.appendChild(htr2);
     table.appendChild(thead);
 
     const tbody = document.createElement('tbody');
 
+    // 各工程を3行で表示
     PROCESSES.forEach(proc => {
       const deptClass = PROCESS_DEPT[proc.no] ? `dept-${PROCESS_DEPT[proc.no]}` : '';
-      const tr = document.createElement('tr');
-      if (deptClass) tr.className = deptClass;
 
-      const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = proc.no; tr.appendChild(tdNo);
-      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = proc.name;
+      // Row1: No.(rs=3) | 工程名(rs=3) | 開始日 | 終了日 | メモ(rs=3)
+      const trDate  = document.createElement('tr');
+      if (deptClass) trDate.className = deptClass;
+
+      const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.rowSpan = 3; tdNo.textContent = proc.no;
+      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.rowSpan = 3; tdItem.textContent = proc.name;
       if (proc.linked) tdItem.title = '全体工程表と連携';
-      tr.appendChild(tdItem);
+      trDate.appendChild(tdNo);
+      trDate.appendChild(tdItem);
+
+      // Row2: ステータス(cs=2)
+      const trStat  = document.createElement('tr');
+      trStat.className = (deptClass ? deptClass + ' ' : '') + 'detail-row-stat';
+
+      // Row3: 担当者(cs=2)
+      const trOwner = document.createElement('tr');
+      trOwner.className = (deptClass ? deptClass + ' ' : '') + 'detail-row-owner';
 
       projsForNum.forEach(proj => {
         const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
@@ -2004,6 +2016,7 @@
           owner     = rec.tantousha  || '';
         }
 
+        // Row1: 開始日 | 終了日 | メモ(rowspan=3)
         const tdStart = document.createElement('td');
         tdStart.className = 'detail-date' + (proc.linked ? ' linked' : '');
         tdStart.textContent = fmtDate(startDate);
@@ -2012,21 +2025,32 @@
         tdEnd.className = 'detail-date' + (proc.linked ? ' linked' : '');
         tdEnd.textContent = fmtDate(endDate);
 
-        const tdOwner = document.createElement('td');
-        tdOwner.className = 'detail-owner' + (proc.linked ? ' linked' : '');
-        const ownerSpan = document.createElement('span');
-        ownerSpan.textContent = owner;
-        tdOwner.appendChild(ownerSpan);
+        const tdMemo = document.createElement('td');
+        tdMemo.className = 'detail-memo-cell';
+        tdMemo.rowSpan = 3;
 
+        trDate.appendChild(tdStart);
+        trDate.appendChild(tdEnd);
+        trDate.appendChild(tdMemo);
+
+        // Row2: ステータス(colspan=2)
         const tdStatus = document.createElement('td');
         tdStatus.className = 'detail-status';
+        tdStatus.colSpan = 2;
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
         applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
         tdStatus.appendChild(statusSpan);
+        trStat.appendChild(tdStatus);
 
-        const tdMemo = document.createElement('td');
-        tdMemo.className = 'detail-memo-cell';
+        // Row3: 担当者(colspan=2)
+        const tdOwner = document.createElement('td');
+        tdOwner.className = 'detail-owner' + (proc.linked ? ' linked' : '');
+        tdOwner.colSpan = 2;
+        const ownerSpan = document.createElement('span');
+        ownerSpan.textContent = owner;
+        tdOwner.appendChild(ownerSpan);
+        trOwner.appendChild(tdOwner);
 
         if (!proc.linked) {
           tdStart.title = 'クリックで日付編集';
@@ -2034,17 +2058,17 @@
           tdStart.addEventListener('click', () => editDetailDateCell(tdStart, tdEnd, proj, proc));
           tdEnd.addEventListener('click',   () => editDetailDateCell(tdStart, tdEnd, proj, proc));
 
-          tdOwner.title = 'クリックで担当者編集';
-          tdOwner.addEventListener('click', () => editOwnerCell(tdOwner, proj, proc));
-
           tdStatus.title = 'クリックでステータス編集';
           tdStatus.addEventListener('click', () => editStatusCell(tdStatus, tdStart, proj, proc));
 
+          tdOwner.title = 'クリックで担当者編集';
+          tdOwner.addEventListener('click', () => editOwnerCell(tdOwner, proj, proc));
+
           const ta = document.createElement('textarea');
           ta.className   = 'detail-memo';
-          ta.rows        = 2;
+          ta.rows        = 3;
           ta.value       = rec.memo || '';
-          ta.placeholder = '─';
+          ta.placeholder = 'メモ';
           ta.addEventListener('blur', async () => {
             const newMemo = ta.value.trim() || null;
             const curRec  = statusMap[key] || {};
@@ -2060,32 +2084,33 @@
           });
           tdMemo.appendChild(ta);
         }
-
-        tr.appendChild(tdStart);
-        tr.appendChild(tdEnd);
-        tr.appendChild(tdOwner);
-        tr.appendChild(tdStatus);
-        tr.appendChild(tdMemo);
       });
 
-      tbody.appendChild(tr);
+      tbody.appendChild(trDate);
+      tbody.appendChild(trStat);
+      tbody.appendChild(trOwner);
     });
 
-    // 出荷日行
-    const trShip = document.createElement('tr');
-    trShip.className = 'row-shipping';
-    const tdNoS   = document.createElement('td'); tdNoS.className = 'col-no'; tdNoS.textContent = '23'; trShip.appendChild(tdNoS);
-    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.textContent = '工場出荷日'; trShip.appendChild(tdItemS);
+    // 出荷日行（3行）
+    const trShip1 = document.createElement('tr'); trShip1.className = 'row-shipping';
+    const trShip2 = document.createElement('tr'); trShip2.className = 'row-shipping detail-row-stat';
+    const trShip3 = document.createElement('tr'); trShip3.className = 'row-shipping detail-row-owner';
+
+    const tdNoS   = document.createElement('td'); tdNoS.className = 'col-no'; tdNoS.rowSpan = 3; tdNoS.textContent = '23';
+    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.rowSpan = 3; tdItemS.textContent = '工場出荷日';
+    trShip1.appendChild(tdNoS); trShip1.appendChild(tdItemS);
+
     projsForNum.forEach(proj => {
-      const tdD = document.createElement('td'); tdD.className = 'detail-date linked'; tdD.textContent = fmtDate(proj.start_date);
-      const tdE = document.createElement('td'); tdE.className = 'detail-date linked';
-      const tdO = document.createElement('td'); tdO.className = 'detail-owner linked';
-      const tdSt = document.createElement('td'); tdSt.className = 'detail-status';
-      const tdM  = document.createElement('td'); tdM.className  = 'detail-memo-cell';
-      trShip.appendChild(tdD); trShip.appendChild(tdE);
-      trShip.appendChild(tdO); trShip.appendChild(tdSt); trShip.appendChild(tdM);
+      const tdD  = document.createElement('td'); tdD.className  = 'detail-date linked'; tdD.textContent = fmtDate(proj.start_date);
+      const tdE  = document.createElement('td'); tdE.className  = 'detail-date linked';
+      const tdM  = document.createElement('td'); tdM.className  = 'detail-memo-cell'; tdM.rowSpan = 3;
+      const tdSt = document.createElement('td'); tdSt.className = 'detail-status'; tdSt.colSpan = 2;
+      const tdO  = document.createElement('td'); tdO.className  = 'detail-owner linked'; tdO.colSpan = 2;
+      trShip1.appendChild(tdD); trShip1.appendChild(tdE); trShip1.appendChild(tdM);
+      trShip2.appendChild(tdSt);
+      trShip3.appendChild(tdO);
     });
-    tbody.appendChild(trShip);
+    tbody.appendChild(trShip1); tbody.appendChild(trShip2); tbody.appendChild(trShip3);
 
     table.appendChild(tbody);
     const container = document.getElementById('detail-table-container');
