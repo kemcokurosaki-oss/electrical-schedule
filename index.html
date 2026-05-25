@@ -2068,7 +2068,7 @@
           ta.className   = 'detail-memo';
           ta.rows        = 3;
           ta.value       = rec.memo || '';
-          ta.placeholder = 'メモ';
+          ta.placeholder = '';
           ta.addEventListener('blur', async () => {
             const newMemo = ta.value.trim() || null;
             const curRec  = statusMap[key] || {};
