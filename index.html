@@ -1051,7 +1051,7 @@
 
     const { data: linkedTasks } = await sb
       .from('tasks')
-      .select('project_number, machine, text, start_date, end_date, owner')
+      .select('project_number, machine, text, start_date, end_date, owner, status')
       .in('project_number', projectNumbers)
       .in('text', linkedTexts);
 
@@ -1410,7 +1410,7 @@
 
       const { data: linkedTasks } = await sb
         .from('tasks')
-        .select('project_number, machine, text, start_date, end_date, owner')
+        .select('project_number, machine, text, start_date, end_date, owner, status')
         .in('project_number', projectNumbers)
         .in('text', linkedTexts);
 
