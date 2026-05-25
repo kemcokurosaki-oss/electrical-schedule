@@ -2085,7 +2085,6 @@
         ta.rows        = 3;
         ta.value       = rec.memo || '';
         ta.readOnly    = true;
-        ta.title       = 'ダブルクリックで編集';
         ta.addEventListener('dblclick', () => {
           ta._origMemo = ta.value;
           ta.readOnly  = false;
