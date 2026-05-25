@@ -890,6 +890,8 @@
   }
 
   // ─── タブ切替 ────────────────────────────────────────────
+  document.getElementById('btn-detail-back').addEventListener('click', () => closeDetailView());
+
   document.getElementById('tab-table').addEventListener('click', () => {
     document.getElementById('tab-table').classList.add('active');
     document.getElementById('tab-gantt').classList.remove('active');
