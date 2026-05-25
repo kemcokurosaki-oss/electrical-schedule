@@ -1117,7 +1117,7 @@
 
       const btn = document.createElement('button');
       btn.className = 'manage-item-btn ' + (isVisible ? 'btn-rm-proj' : 'btn-add-proj');
-      btn.textContent = isVisible ? '非表示にする' : '表示に追加';
+      btn.textContent = isVisible ? '削除' : '追加';
 
       btn.addEventListener('click', async () => {
         btn.disabled = true;
