@@ -774,13 +774,21 @@
     if (e1) { console.error(e1); hideLoading(); return; }
 
     const seen = new Set();
-    currentProjects = (shipTasks || []).filter(p => {
+    allAvailableProjects = (shipTasks || []).filter(p => {
       if (completedNums.has(String(p.project_number))) return false;
       const key = `${p.project_number}__${p.machine}`;
       if (seen.has(key)) return false;
       seen.add(key);
       return true;
     });
+
+    // 表示工番フィルター取得（空なら全件表示）
+    const { data: visibleData } = await sb.from('denki_visible_projects').select('project_number');
+    visibleProjectNums = new Set((visibleData || []).map(r => String(r.project_number)));
+
+    currentProjects = visibleProjectNums.size > 0
+      ? allAvailableProjects.filter(p => visibleProjectNums.has(String(p.project_number)))
+      : allAvailableProjects;
 
     if (currentProjects.length === 0) {
       hideLoading();
