@@ -1009,10 +1009,10 @@
 
         if (!proc.linked) {
           td.title = 'クリックで編集';
-          td.addEventListener('click', () => editStatusCell(td, dateTd, proj, proc));
-          dateTd.addEventListener('click', () => editDateCell(dateTd, proj, proc));
+          td.addEventListener('dblclick', () => editStatusCell(td, dateTd, proj, proc));
+          dateTd.addEventListener('dblclick', () => editDateCell(dateTd, proj, proc));
           const ownerTd = trOwner.children[pi + 2];
-          ownerTd.addEventListener('click', () => editOwnerCell(ownerTd, proj, proc));
+          ownerTd.addEventListener('dblclick', () => editOwnerCell(ownerTd, proj, proc));
         }
 
         trStatus.appendChild(td);
