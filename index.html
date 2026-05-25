@@ -1370,37 +1370,70 @@
     });
   }
 
+  function toDBDate(d) {
+    return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+  }
+
+  function ensureDatePicker() {
+    if (datePicker) return;
+    const anchor = document.getElementById('fp-anchor');
+    const label  = document.getElementById('fp-range-label');
+    datePicker = flatpickr(anchor, {
+      mode: 'range',
+      showMonths: 2,
+      locale: 'ja',
+      dateFormat: 'Y-m-d',
+      disableMobile: true,
+      onChange: (selectedDates) => {
+        if (selectedDates.length === 1) {
+          label.textContent = `開始日: ${toDBDate(selectedDates[0])}　終了日: 選択中...`;
+        } else if (selectedDates.length === 2) {
+          label.textContent = `開始日: ${toDBDate(selectedDates[0])}　終了日: ${toDBDate(selectedDates[1])}`;
+        }
+      },
+      onOpen: () => {
+        label.style.display = 'block';
+      },
+      onClose: (selectedDates) => {
+        label.style.display = 'none';
+        activeInlineEdit = null;
+        if (datePickerSave) {
+          const newStart = selectedDates[0] ? toDBDate(selectedDates[0]) : null;
+          const newEnd   = selectedDates[1] ? toDBDate(selectedDates[1]) : null;
+          if (newStart || newEnd) datePickerSave(newStart, newEnd);
+          datePickerSave = null;
+        }
+      },
+    });
+  }
+
   function editDateCell(td, proj, proc) {
     closeActiveInlineEdit();
+    ensureDatePicker();
+
     const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
     const rec = statusMap[key] || {};
-    const origHTML = td.innerHTML;
 
-    td.innerHTML = '';
-    const wrap = document.createElement('div');
-    wrap.className = 'inline-date-wrap';
+    // anchor をセルの右上に配置してカレンダーをその位置に表示
+    const rect = td.getBoundingClientRect();
+    const label = document.getElementById('fp-range-label');
+    const anchor = document.getElementById('fp-anchor');
+    anchor.style.top  = `${rect.top}px`;
+    anchor.style.left = `${rect.right}px`;
 
-    const startIn = document.createElement('input');
-    startIn.type = 'date'; startIn.value = rec.start_date || '';
-    startIn.className = 'inline-date-input'; startIn.title = '開始日';
+    // ラベルはカレンダーが開いた後に位置を合わせる
+    const posLabel = () => {
+      const cal = document.querySelector('.flatpickr-calendar.open');
+      if (cal) {
+        const cr = cal.getBoundingClientRect();
+        label.style.top  = `${cr.top - 22}px`;
+        label.style.left = `${cr.left}px`;
+        label.style.width = `${cr.width}px`;
+      }
+    };
+    requestAnimationFrame(posLabel);
 
-    const endIn = document.createElement('input');
-    endIn.type = 'date'; endIn.value = rec.end_date || '';
-    endIn.className = 'inline-date-input'; endIn.title = '終了日';
-
-    wrap.appendChild(startIn); wrap.appendChild(endIn);
-    td.appendChild(wrap);
-    startIn.focus();
-
-    const cancel = () => { td.innerHTML = origHTML; };
-    activeInlineEdit = { cancel };
-
-    let blurTimer = null;
-
-    async function saveDate() {
-      const newStart = startIn.value || null;
-      const newEnd = endIn.value || null;
-      activeInlineEdit = null;
+    datePickerSave = async (newStart, newEnd) => {
       td.innerHTML = '';
       const newSpan = document.createElement('span');
       newSpan.textContent = fmtDateRange(newStart, newEnd);
@@ -1413,15 +1446,17 @@
       const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha;
       if (isEmpty) delete statusMap[key];
       else statusMap[key] = { ...curRec, start_date: newStart, end_date: newEnd };
-    }
+    };
 
-    const onBlur = () => { blurTimer = setTimeout(saveDate, 200); };
-    const onFocus = () => { clearTimeout(blurTimer); };
+    const defaultDates = [rec.start_date, rec.end_date].filter(Boolean);
+    datePicker.setDate(defaultDates, false);
+    const initLabel = defaultDates.length === 2
+      ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
+      : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
+    label.textContent = initLabel;
 
-    startIn.addEventListener('blur', onBlur);
-    endIn.addEventListener('blur', onBlur);
-    startIn.addEventListener('focus', onFocus);
-    endIn.addEventListener('focus', onFocus);
+    datePicker.open();
+    activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
   }
 
   async function saveRecord(projNum, machine, procNo, { status, start_date, end_date, tantousha }) {
