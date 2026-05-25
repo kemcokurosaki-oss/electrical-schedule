@@ -871,15 +871,20 @@
   document.getElementById('tab-table').addEventListener('click', () => {
     document.getElementById('tab-table').classList.add('active');
     document.getElementById('tab-gantt').classList.remove('active');
+    document.getElementById('view-detail').style.display = 'none';
     document.getElementById('view-table').style.display = '';
     document.getElementById('view-gantt').classList.remove('active');
+    currentDetailProjNum = null;
+    updateDetailButtons();
   });
 
   document.getElementById('tab-gantt').addEventListener('click', () => {
     document.getElementById('tab-gantt').classList.add('active');
     document.getElementById('tab-table').classList.remove('active');
+    document.getElementById('view-detail').style.display = 'none';
     document.getElementById('view-table').style.display = 'none';
     document.getElementById('view-gantt').classList.add('active');
+    currentDetailProjNum = null;
     showGantt();
   });
 
