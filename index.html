@@ -2080,47 +2080,47 @@
 
           tdOwner.title = 'ダブルクリックで担当者編集';
           tdOwner.addEventListener('dblclick', () => editOwnerCell(tdOwner, proj, proc));
-
-          const ta = document.createElement('textarea');
-          ta.className   = 'detail-memo';
-          ta.rows        = 3;
-          ta.value       = rec.memo || '';
-          ta.readOnly    = true;
-          ta.title       = 'ダブルクリックで編集';
-          ta.addEventListener('dblclick', () => {
-            ta._origMemo = ta.value;
-            ta.readOnly  = false;
-            ta.focus();
-            ta.select();
-          });
-          ta.addEventListener('keydown', e => {
-            if (e.key === 'Enter' && !e.shiftKey) {
-              e.preventDefault();
-              ta.blur();
-            }
-            if (e.key === 'Escape') {
-              ta.value    = ta._origMemo ?? (rec.memo || '');
-              ta.readOnly = true;
-              ta.blur();
-            }
-          });
-          ta.addEventListener('blur', async () => {
-            if (ta.readOnly) return;
-            ta.readOnly = true;
-            const newMemo = ta.value.trim() || null;
-            const curRec  = statusMap[key] || {};
-            if ((newMemo || null) === (curRec.memo || null)) return;
-            await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-              status: curRec.status || null, start_date: curRec.start_date || null,
-              end_date: curRec.end_date || null, tantousha: curRec.tantousha || null,
-              memo: newMemo,
-            });
-            const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !curRec.tantousha && !newMemo;
-            if (isEmpty) delete statusMap[key];
-            else statusMap[key] = { ...curRec, memo: newMemo };
-          });
-          tdMemo.appendChild(ta);
         }
+
+        const ta = document.createElement('textarea');
+        ta.className   = 'detail-memo';
+        ta.rows        = 3;
+        ta.value       = rec.memo || '';
+        ta.readOnly    = true;
+        ta.title       = 'ダブルクリックで編集';
+        ta.addEventListener('dblclick', () => {
+          ta._origMemo = ta.value;
+          ta.readOnly  = false;
+          ta.focus();
+          ta.select();
+        });
+        ta.addEventListener('keydown', e => {
+          if (e.key === 'Enter' && !e.shiftKey) {
+            e.preventDefault();
+            ta.blur();
+          }
+          if (e.key === 'Escape') {
+            ta.value    = ta._origMemo ?? (rec.memo || '');
+            ta.readOnly = true;
+            ta.blur();
+          }
+        });
+        ta.addEventListener('blur', async () => {
+          if (ta.readOnly) return;
+          ta.readOnly = true;
+          const newMemo = ta.value.trim() || null;
+          const curRec  = statusMap[key] || {};
+          if ((newMemo || null) === (curRec.memo || null)) return;
+          await saveRecord(proj.project_number, proj.machine || '', proc.no, {
+            status: curRec.status || null, start_date: curRec.start_date || null,
+            end_date: curRec.end_date || null, tantousha: curRec.tantousha || null,
+            memo: newMemo,
+          });
+          const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !curRec.tantousha && !newMemo;
+          if (isEmpty) delete statusMap[key];
+          else statusMap[key] = { ...curRec, memo: newMemo };
+        });
+        tdMemo.appendChild(ta);
       });
 
       tbody.appendChild(trDate);
