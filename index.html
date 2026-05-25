@@ -2052,7 +2052,12 @@
         tdStatus.colSpan = 2;
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
-        applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
+        if (proc.linked) {
+          const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
+          applyStatusStyle(tdStart, tdStatus, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date));
+        } else {
+          applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
+        }
         tdStatus.appendChild(statusSpan);
         trStat.appendChild(tdStatus);
 
