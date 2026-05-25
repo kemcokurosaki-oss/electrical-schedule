@@ -836,6 +836,10 @@
 
   let visibleProjectNums = new Set(); // denki_visible_projects に登録された工番
   let allAvailableProjects = [];      // 完了除外済みの全工番（管理パネル用）
+  let currentDetailProjNum = null;    // 詳細ビューで開いている工番
+
+  const SVG_EXPAND   = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M0,4 L0,0 L4,0 L4,1.5 L1.5,1.5 L1.5,4 Z M8,0 L12,0 L12,4 L10.5,4 L10.5,1.5 L8,1.5 Z M0,8 L1.5,8 L1.5,10.5 L4,10.5 L4,12 L0,12 Z M8,10.5 L10.5,10.5 L10.5,8 L12,8 L12,12 L8,12 Z"/></svg>`;
+  const SVG_COLLAPSE = `<svg width="12" height="12" viewBox="0 0 12 12" fill="currentColor"><path d="M4,0 L4,4 L0,4 L0,2.5 L2.5,2.5 L2.5,0 Z M8,0 L9.5,0 L9.5,2.5 L12,2.5 L12,4 L8,4 Z M0,8 L4,8 L4,12 L2.5,12 L2.5,9.5 L0,9.5 Z M8,8 L12,8 L12,9.5 L9.5,9.5 L9.5,12 L8,12 Z"/></svg>`;
 
   // ─── ユーティリティ ─────────────────────────────────────
   function fmtDate(dateStr) {
