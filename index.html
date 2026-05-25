@@ -1636,10 +1636,10 @@
     activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
   }
 
-  async function saveRecord(projNum, machine, procNo, { status, start_date, end_date, tantousha }) {
+  async function saveRecord(projNum, machine, procNo, { status, start_date, end_date, tantousha, memo = null }) {
     const pn = String(projNum);
     const mc = machine || '';
-    const isEmpty = !status && !start_date && !end_date && !tantousha;
+    const isEmpty = !status && !start_date && !end_date && !tantousha && !memo;
     try {
       if (isEmpty) {
         await sb.from('denki_process_status').delete()
@@ -1647,7 +1647,7 @@
       } else {
         await sb.from('denki_process_status').upsert(
           { project_number: pn, machine: mc, process_no: procNo,
-            status: status || null, start_date, end_date, tantousha },
+            status: status || null, start_date, end_date, tantousha, memo: memo || null },
           { onConflict: 'project_number,machine,process_no' }
         );
       }
