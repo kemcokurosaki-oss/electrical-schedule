@@ -550,20 +550,40 @@
     /* ─── 詳細ビュー ─────────────────────────────────────── */
     #view-detail { display: none; }
 
-    #detail-gap { height: 16px; background: #f0f2f5; }
-
-    #detail-wrapper {
-      overflow: auto;
-      padding: 0 16px 16px 0;
-      max-height: calc(100vh - 44px - 16px);
+    #detail-topbar {
+      height: 38px;
+      background: #f7fafc;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      align-items: center;
+      padding: 0 12px;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
+    #btn-detail-back {
+      padding: 3px 12px;
+      border: 1px solid #1a3a5c;
+      border-radius: 3px;
+      background: white;
+      color: #1a3a5c;
+      cursor: pointer;
+      font-size: 12px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+      white-space: nowrap;
+    }
+    #btn-detail-back:hover { background: #1a3a5c; color: white; }
+
     #detail-info-bar {
-      display: block;
-      padding: 6px 0 8px 0;
       font-size: 13px;
       font-weight: bold;
       color: #1a3a5c;
+    }
+
+    #detail-wrapper {
+      overflow: auto;
+      padding: 8px 16px 16px 0;
+      max-height: calc(100vh - 44px - 38px);
     }
 
     table.detail-table {
