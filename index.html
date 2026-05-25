@@ -2085,7 +2085,28 @@
           ta.className   = 'detail-memo';
           ta.rows        = 3;
           ta.value       = rec.memo || '';
+          ta.readOnly    = true;
+          ta.title       = 'ダブルクリックで編集';
+          ta.addEventListener('dblclick', () => {
+            ta._origMemo = ta.value;
+            ta.readOnly  = false;
+            ta.focus();
+            ta.select();
+          });
+          ta.addEventListener('keydown', e => {
+            if (e.key === 'Enter' && !e.shiftKey) {
+              e.preventDefault();
+              ta.blur();
+            }
+            if (e.key === 'Escape') {
+              ta.value    = ta._origMemo ?? (rec.memo || '');
+              ta.readOnly = true;
+              ta.blur();
+            }
+          });
           ta.addEventListener('blur', async () => {
+            if (ta.readOnly) return;
+            ta.readOnly = true;
             const newMemo = ta.value.trim() || null;
             const curRec  = statusMap[key] || {};
             if ((newMemo || null) === (curRec.memo || null)) return;
