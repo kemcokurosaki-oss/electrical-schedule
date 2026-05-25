@@ -617,12 +617,14 @@
     .detail-table thead th.col-item { z-index: 30; background: #1a3a5c; text-align: center; }
     .detail-table .header-machine-group { background: #2d6a9f !important; }
 
-    .detail-table td.detail-date   { min-width: 80px; max-width: 80px; font-size: 11px; cursor: pointer; }
+    .detail-table td.detail-date   { min-width: 80px; max-width: 80px; font-size: 11px; cursor: pointer; height: 32px; }
     .detail-table td.detail-date.linked  { cursor: default; }
-    .detail-table td.detail-owner  { min-width: 90px; max-width: 90px; font-size: 11px; cursor: pointer; }
+    .detail-table td.detail-owner  { font-size: 11px; cursor: pointer; text-align: center; }
     .detail-table td.detail-owner.linked { cursor: default; }
-    .detail-table td.detail-status { min-width: 90px; max-width: 90px; font-size: 10px; cursor: pointer; }
-    .detail-table td.detail-memo-cell { min-width: 200px; max-width: 300px; padding: 2px 4px; }
+    .detail-table td.detail-status { font-size: 10px; cursor: pointer; text-align: center; }
+    .detail-table td.detail-memo-cell { min-width: 200px; max-width: 300px; padding: 2px 4px; vertical-align: top; }
+    .detail-table tr.detail-row-stat  td { background: #f7fafc; border-top: none; height: 22px; }
+    .detail-table tr.detail-row-owner td { background: #edf2f7; border-top: none; height: 22px; }
 
     .detail-memo {
       width: 100%;
