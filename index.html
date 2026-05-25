@@ -1001,29 +1001,19 @@
 
         const td = document.createElement('td');
         td.className = 'cell-status';
-        td.title = 'ダブルクリックで編集';
 
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
         applyStatusStyle(dateTd, td, statusSpan, rec.status || '');
         td.appendChild(statusSpan);
 
-        const openEdit = () => openPopup({
-          projNum:       proj.project_number,
-          machine:       proj.machine || '',
-          procNo:        proc.no,
-          procName:      proc.name,
-          dateTd,
-          statusTd:      td,
-          statusSpan,
-          ownerSpan:     ownerSpans[pi],
-          dateRangeSpan: dateRangeSpans[pi],
-          source:        'table',
-        });
-
-        td.addEventListener('dblclick', openEdit);
-        dateTd.addEventListener('dblclick', openEdit);
-        trOwner.children[pi + 2].addEventListener('dblclick', openEdit);
+        if (!proc.linked) {
+          td.title = 'クリックで編集';
+          td.addEventListener('click', () => editStatusCell(td, dateTd, proj, proc));
+          dateTd.addEventListener('click', () => editDateCell(dateTd, proj, proc));
+          const ownerTd = trOwner.children[pi + 2];
+          ownerTd.addEventListener('click', () => editOwnerCell(ownerTd, proj, proc));
+        }
 
         trStatus.appendChild(td);
       });
