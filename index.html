@@ -1070,13 +1070,9 @@
       }
     });
 
-    // 表示中を先に、次を工番順に並べる
-    uniqueProjects.sort((a, b) => {
-      const av = visibleProjectNums.has(String(a.project_number)) ? 0 : 1;
-      const bv = visibleProjectNums.has(String(b.project_number)) ? 0 : 1;
-      if (av !== bv) return av - bv;
-      return String(a.project_number).localeCompare(String(b.project_number));
-    });
+    uniqueProjects.sort((a, b) =>
+      String(a.project_number).localeCompare(String(b.project_number))
+    );
 
     uniqueProjects.forEach(p => {
       const pn = String(p.project_number);
