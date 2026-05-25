@@ -970,7 +970,7 @@
         const rec = statusMap[statusKey] || {};
         const td = document.createElement('td');
         td.className = 'cell-owner' + (proc.linked ? ' linked' : '');
-        td.title = 'ダブルクリックで編集';
+        if (!proc.linked) td.title = 'クリックで編集';
         const span = document.createElement('span');
         let displayOwner;
         if (proc.linked) {
