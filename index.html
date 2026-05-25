@@ -527,6 +527,125 @@
       padding: 1px;
       box-sizing: border-box;
     }
+
+    /* ─── 工番詳細ボタン ─────────────────────────────────── */
+    .btn-detail {
+      position: absolute;
+      right: 4px;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      cursor: pointer;
+      color: rgba(255,255,255,0.75);
+      padding: 2px 3px;
+      line-height: 1;
+      border-radius: 2px;
+      display: inline-flex;
+      align-items: center;
+    }
+    .btn-detail:hover { color: white; background: rgba(255,255,255,0.2); }
+    thead th.header-number { position: relative; padding-right: 22px; }
+
+    /* ─── 詳細ビュー ─────────────────────────────────────── */
+    #view-detail { display: none; }
+
+    #detail-gap { height: 16px; background: #f0f2f5; }
+
+    #detail-wrapper {
+      overflow: auto;
+      padding: 0 16px 16px 0;
+      max-height: calc(100vh - 44px - 16px);
+    }
+
+    #detail-info-bar {
+      display: block;
+      padding: 6px 0 8px 0;
+      font-size: 13px;
+      font-weight: bold;
+      color: #1a3a5c;
+    }
+
+    table.detail-table {
+      border-collapse: separate;
+      border-spacing: 0;
+      border-top: 1px solid #bbb;
+      border-left: 1px solid #bbb;
+      white-space: nowrap;
+      background: white;
+    }
+    .detail-table th, .detail-table td {
+      border-right: 1px solid #bbb;
+      border-bottom: 1px solid #bbb;
+      padding: 3px 6px;
+      text-align: center;
+      vertical-align: middle;
+    }
+    .detail-table .col-no   { position: sticky; left: 0;    min-width: 36px;  max-width: 36px;  background: white; z-index: 10; }
+    .detail-table .col-item { position: sticky; left: 36px; min-width: 300px; max-width: 300px; text-align: left; background: white; z-index: 10; }
+
+    .detail-table thead th {
+      background: #1a3a5c;
+      color: white;
+      font-weight: bold;
+      position: sticky;
+      z-index: 20;
+    }
+    .detail-table thead tr:nth-child(1) th { top: 0; }
+    .detail-table thead tr:nth-child(2) th { top: 25px; }
+    .detail-table thead th.col-no,
+    .detail-table thead th.col-item { z-index: 30; background: #1a3a5c; text-align: center; }
+    .detail-table .header-machine-group { background: #2d6a9f !important; }
+
+    .detail-table td.detail-date   { min-width: 80px; max-width: 80px; font-size: 11px; cursor: pointer; }
+    .detail-table td.detail-date.linked  { cursor: default; }
+    .detail-table td.detail-owner  { min-width: 90px; max-width: 90px; font-size: 11px; cursor: pointer; }
+    .detail-table td.detail-owner.linked { cursor: default; }
+    .detail-table td.detail-status { min-width: 90px; max-width: 90px; font-size: 10px; cursor: pointer; }
+    .detail-table td.detail-memo-cell { min-width: 200px; max-width: 300px; padding: 2px 4px; }
+
+    .detail-memo {
+      width: 100%;
+      font-size: 11px;
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+      border: 1px solid #e2e8f0;
+      border-radius: 2px;
+      padding: 2px 4px;
+      resize: vertical;
+      background: transparent;
+      box-sizing: border-box;
+      min-height: 36px;
+    }
+    .detail-memo:focus { outline: none; border-color: #3182ce; background: white; }
+    .detail-memo::placeholder { color: #ccc; }
+
+    /* 部署別カラー（詳細ビュー） */
+    .detail-table tr.dept-eigyo  td.col-no, .detail-table tr.dept-eigyo  td.col-item { background: #FDE8C8 !important; }
+    .detail-table tr.dept-sekkei td.col-no, .detail-table tr.dept-sekkei td.col-item { background: #D6EAF8 !important; }
+    .detail-table tr.dept-denki  td.col-no, .detail-table tr.dept-denki  td.col-item { background: #FFF0F5 !important; }
+    .detail-table tr.dept-sosou  td.col-no, .detail-table tr.dept-sosou  td.col-item { background: #FAD4D0 !important; }
+    .detail-table tr.dept-denso  td.col-no, .detail-table tr.dept-denso  td.col-item { background: #EBD9F5 !important; }
+
+    .detail-table td.linked { background: #ebf8ff; }
+    .detail-table tr.row-shipping td { background: #fffbeb; font-weight: bold; }
+    .detail-table tr.row-shipping td.col-no,
+    .detail-table tr.row-shipping td.col-item { background: #fef3c7; }
+    .detail-table tr.row-shipping td.detail-date { color: #b45309; font-size: 13px; }
+
+    .detail-table td.detail-date.proc-done   { background: #e8e8e8 !important; color: #bbb; }
+    .detail-table td.detail-status.proc-done { background: #e8e8e8 !important; }
+    .detail-table td.detail-status.proc-wip  { background: #b7eb8f !important; }
+    .detail-table td.detail-date.proc-na { position: relative; overflow: hidden; }
+    .detail-table td.detail-date.proc-na::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: repeating-linear-gradient(
+        135deg, transparent, transparent 5px,
+        rgba(100,100,100,0.3) 5px, rgba(100,100,100,0.3) 6px
+      );
+      pointer-events: none;
+    }
   </style>
 </head>
 <body>
