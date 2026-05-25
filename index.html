@@ -1242,13 +1242,13 @@
 
     gantt.config.columns = [
       { name: 'text',   label: '工番 / 機種 / 工程名', width: 230, tree: true },
-      { name: 'owner',  label: '担当者', width: 75, align: 'center' },
+      { name: 'owner',  label: '担当者', width: 90, align: 'center' },
       {
-        name: 'start_disp', label: '開始日', width: 70, align: 'center',
+        name: 'start_disp', label: '開始日', width: 85, align: 'center',
         template: t => t.type === gantt.config.types.project ? '' : fmtDate(t.start_date_str || ''),
       },
       {
-        name: 'end_disp', label: '終了日', width: 70, align: 'center',
+        name: 'end_disp', label: '終了日', width: 85, align: 'center',
         template: t => t.type === gantt.config.types.project ? '' : fmtDate(t.end_date_str || ''),
       },
     ];
