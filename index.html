@@ -275,6 +275,9 @@
     .gantt_task_line.gantt-pending { background-color: #90cdf4; border-color: #3182ce; }
     .gantt_task_line.gantt-project { background-color: #2d6a9f; border-color: #1a3a5c; height: 14px !important; margin-top: 7px !important; }
 
+    /* 担当者テキストが枠に収まらない場合に … で省略 */
+    .gantt_task_content { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
     /* 今日マーカー */
     .gantt_marker.today-line { background-color: rgba(200,50,50,0.6); }
     .gantt_marker_content { font-size: 10px; color: #c00; padding: 0 2px; }
