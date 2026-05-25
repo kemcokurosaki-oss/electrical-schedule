@@ -786,9 +786,7 @@
     const { data: visibleData } = await sb.from('denki_visible_projects').select('project_number');
     visibleProjectNums = new Set((visibleData || []).map(r => String(r.project_number)));
 
-    currentProjects = visibleProjectNums.size > 0
-      ? allAvailableProjects.filter(p => visibleProjectNums.has(String(p.project_number)))
-      : allAvailableProjects;
+    currentProjects = allAvailableProjects.filter(p => visibleProjectNums.has(String(p.project_number)));
 
     if (currentProjects.length === 0) {
       hideLoading();
