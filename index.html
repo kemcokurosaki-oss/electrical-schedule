@@ -1612,14 +1612,15 @@
     datePickerSave = async (newStart, newEnd) => {
       td.innerHTML = '';
       const newSpan = document.createElement('span');
-      newSpan.textContent = fmtDateRange(newStart, newEnd);
+      newSpan.textContent = fmtDate(newStart);
       td.appendChild(newSpan);
       const curRec = statusMap[key] || {};
       await saveRecord(proj.project_number, proj.machine || '', proc.no, {
         status: curRec.status || null, start_date: newStart,
         end_date: newEnd, tantousha: curRec.tantousha || null,
+        memo: curRec.memo || null,
       });
-      const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha;
+      const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha && !curRec.memo;
       if (isEmpty) delete statusMap[key];
       else statusMap[key] = { ...curRec, start_date: newStart, end_date: newEnd };
     };
