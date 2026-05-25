@@ -935,14 +935,15 @@
     const end_date   = document.getElementById('popup-end').value   || null;
     const tantousha  = document.getElementById('popup-owner').value || null;
 
-    await saveRecord(editCtx.projNum, editCtx.machine, editCtx.procNo, { status, start_date, end_date, tantousha });
+    const existingMemo = (statusMap[editCtx.key] || {}).memo || null;
+    await saveRecord(editCtx.projNum, editCtx.machine, editCtx.procNo, { status, start_date, end_date, tantousha, memo: existingMemo });
 
     // statusMap 更新
-    const isEmpty = !status && !start_date && !end_date && !tantousha;
+    const isEmpty = !status && !start_date && !end_date && !tantousha && !existingMemo;
     if (isEmpty) {
       delete statusMap[editCtx.key];
     } else {
-      statusMap[editCtx.key] = { status, start_date, end_date, tantousha };
+      statusMap[editCtx.key] = { status, start_date, end_date, tantousha, memo: existingMemo };
     }
 
     if (editCtx.source === 'gantt' && editCtx.ganttId) {
