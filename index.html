@@ -1256,7 +1256,7 @@
         statusSpan.className = 'status-label';
         if (proc.linked) {
           const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-          applyStatusStyle(dateTd, td, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date));
+          applyStatusStyle(dateTd, td, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date, currentLinkedMap[lk]?.status));
         } else {
           applyStatusStyle(dateTd, td, statusSpan, rec.status || '');
         }
