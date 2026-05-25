@@ -1840,6 +1840,233 @@
   document.getElementById('zoom-month').addEventListener('click', () => setZoom('month'));
   document.getElementById('btn-today').addEventListener('click',  () => gantt.showDate(new Date()));
 
+  // ─── 詳細ビュー ───────────────────────────────────────
+  function updateDetailButtons() {
+    document.querySelectorAll('.btn-detail').forEach(btn => {
+      const isOpen = currentDetailProjNum === String(btn.dataset.projNum);
+      btn.innerHTML = isOpen ? SVG_COLLAPSE : SVG_EXPAND;
+      btn.title     = isOpen ? '一覧に戻る' : '詳細表示';
+    });
+  }
+
+  function openDetailView(projNum) {
+    currentDetailProjNum = String(projNum);
+    document.getElementById('view-table').style.display = 'none';
+    document.getElementById('view-detail').style.display = '';
+    renderDetailTable(projNum);
+    updateDetailButtons();
+  }
+
+  function closeDetailView() {
+    currentDetailProjNum = null;
+    document.getElementById('view-detail').style.display = 'none';
+    document.getElementById('view-table').style.display = '';
+    updateDetailButtons();
+  }
+
+  function editDetailDateCell(tdStart, tdEnd, proj, proc) {
+    closeActiveInlineEdit();
+    ensureDatePicker();
+
+    const key  = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
+    const rec  = statusMap[key] || {};
+    const rect = tdStart.getBoundingClientRect();
+    const label  = document.getElementById('fp-range-label');
+    const anchor = document.getElementById('fp-anchor');
+    anchor.style.top  = `${rect.top}px`;
+    anchor.style.left = `${rect.right}px`;
+
+    const posLabel = () => {
+      const cal = document.querySelector('.flatpickr-calendar.open');
+      if (cal) {
+        const cr = cal.getBoundingClientRect();
+        label.style.top   = `${cr.top - 22}px`;
+        label.style.left  = `${cr.left}px`;
+        label.style.width = `${cr.width}px`;
+      }
+    };
+    requestAnimationFrame(posLabel);
+
+    datePickerSave = async (newStart, newEnd) => {
+      tdStart.textContent = fmtDate(newStart);
+      tdEnd.textContent   = fmtDate(newEnd);
+      const curRec = statusMap[key] || {};
+      await saveRecord(proj.project_number, proj.machine || '', proc.no, {
+        status: curRec.status || null, start_date: newStart,
+        end_date: newEnd, tantousha: curRec.tantousha || null,
+        memo: curRec.memo || null,
+      });
+      const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha && !curRec.memo;
+      if (isEmpty) delete statusMap[key];
+      else statusMap[key] = { ...curRec, start_date: newStart, end_date: newEnd };
+    };
+
+    const defaultDates = [rec.start_date, rec.end_date].filter(Boolean);
+    datePicker.setDate(defaultDates, false);
+    const initLabel = defaultDates.length === 2
+      ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
+      : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
+    label.textContent = initLabel;
+
+    datePicker.open();
+    activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
+  }
+
+  function renderDetailTable(projNum) {
+    const projsForNum = currentProjects.filter(p => String(p.project_number) === String(projNum));
+    if (projsForNum.length === 0) return;
+
+    const pi0 = projsForNum[0];
+    document.getElementById('detail-info-bar').textContent =
+      `工番: ${projNum}　客先: ${pi0.customer_name || '─'}`;
+
+    const table = document.createElement('table');
+    table.className = 'detail-table';
+    const thead = document.createElement('thead');
+
+    // ヘッダー行1: 機種名
+    const tr1 = document.createElement('tr');
+    const thNo1 = document.createElement('th'); thNo1.className = 'col-no'; thNo1.rowSpan = 2; thNo1.textContent = 'No.'; tr1.appendChild(thNo1);
+    const thItem1 = document.createElement('th'); thItem1.className = 'col-item'; thItem1.rowSpan = 2; thItem1.textContent = '工程名'; tr1.appendChild(thItem1);
+    projsForNum.forEach(proj => {
+      const th = document.createElement('th');
+      th.colSpan = 5;
+      th.className = 'header-machine-group';
+      th.textContent = `機種: ${proj.machine || '─'}`;
+      tr1.appendChild(th);
+    });
+    thead.appendChild(tr1);
+
+    // ヘッダー行2: 各列ラベル
+    const tr2 = document.createElement('tr');
+    projsForNum.forEach(() => {
+      ['開始日', '終了日', '担当者', 'ステータス', 'メモ'].forEach(lbl => {
+        const th = document.createElement('th');
+        th.textContent = lbl;
+        th.style.fontSize = '11px';
+        tr2.appendChild(th);
+      });
+    });
+    thead.appendChild(tr2);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    PROCESSES.forEach(proc => {
+      const deptClass = PROCESS_DEPT[proc.no] ? `dept-${PROCESS_DEPT[proc.no]}` : '';
+      const tr = document.createElement('tr');
+      if (deptClass) tr.className = deptClass;
+
+      const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = proc.no; tr.appendChild(tdNo);
+      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = proc.name;
+      if (proc.linked) tdItem.title = '全体工程表と連携';
+      tr.appendChild(tdItem);
+
+      projsForNum.forEach(proj => {
+        const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
+        const rec = statusMap[key] || {};
+
+        let startDate, endDate, owner;
+        if (proc.linked) {
+          const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
+          startDate = currentLinkedMap[lk]?.start_date || '';
+          endDate   = '';
+          owner     = currentLinkedMap[lk]?.owner || '';
+        } else {
+          startDate = rec.start_date || '';
+          endDate   = rec.end_date   || '';
+          owner     = rec.tantousha  || '';
+        }
+
+        const tdStart = document.createElement('td');
+        tdStart.className = 'detail-date' + (proc.linked ? ' linked' : '');
+        tdStart.textContent = fmtDate(startDate);
+
+        const tdEnd = document.createElement('td');
+        tdEnd.className = 'detail-date' + (proc.linked ? ' linked' : '');
+        tdEnd.textContent = fmtDate(endDate);
+
+        const tdOwner = document.createElement('td');
+        tdOwner.className = 'detail-owner' + (proc.linked ? ' linked' : '');
+        const ownerSpan = document.createElement('span');
+        ownerSpan.textContent = owner;
+        tdOwner.appendChild(ownerSpan);
+
+        const tdStatus = document.createElement('td');
+        tdStatus.className = 'detail-status';
+        const statusSpan = document.createElement('span');
+        statusSpan.className = 'status-label';
+        applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
+        tdStatus.appendChild(statusSpan);
+
+        const tdMemo = document.createElement('td');
+        tdMemo.className = 'detail-memo-cell';
+
+        if (!proc.linked) {
+          tdStart.title = 'クリックで日付編集';
+          tdEnd.title   = 'クリックで日付編集';
+          tdStart.addEventListener('click', () => editDetailDateCell(tdStart, tdEnd, proj, proc));
+          tdEnd.addEventListener('click',   () => editDetailDateCell(tdStart, tdEnd, proj, proc));
+
+          tdOwner.title = 'クリックで担当者編集';
+          tdOwner.addEventListener('click', () => editOwnerCell(tdOwner, proj, proc));
+
+          tdStatus.title = 'クリックでステータス編集';
+          tdStatus.addEventListener('click', () => editStatusCell(tdStatus, tdStart, proj, proc));
+
+          const ta = document.createElement('textarea');
+          ta.className   = 'detail-memo';
+          ta.rows        = 2;
+          ta.value       = rec.memo || '';
+          ta.placeholder = '─';
+          ta.addEventListener('blur', async () => {
+            const newMemo = ta.value.trim() || null;
+            const curRec  = statusMap[key] || {};
+            if ((newMemo || null) === (curRec.memo || null)) return;
+            await saveRecord(proj.project_number, proj.machine || '', proc.no, {
+              status: curRec.status || null, start_date: curRec.start_date || null,
+              end_date: curRec.end_date || null, tantousha: curRec.tantousha || null,
+              memo: newMemo,
+            });
+            const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !curRec.tantousha && !newMemo;
+            if (isEmpty) delete statusMap[key];
+            else statusMap[key] = { ...curRec, memo: newMemo };
+          });
+          tdMemo.appendChild(ta);
+        }
+
+        tr.appendChild(tdStart);
+        tr.appendChild(tdEnd);
+        tr.appendChild(tdOwner);
+        tr.appendChild(tdStatus);
+        tr.appendChild(tdMemo);
+      });
+
+      tbody.appendChild(tr);
+    });
+
+    // 出荷日行
+    const trShip = document.createElement('tr');
+    trShip.className = 'row-shipping';
+    const tdNoS   = document.createElement('td'); tdNoS.className = 'col-no'; tdNoS.textContent = '23'; trShip.appendChild(tdNoS);
+    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.textContent = '工場出荷日'; trShip.appendChild(tdItemS);
+    projsForNum.forEach(proj => {
+      const tdD = document.createElement('td'); tdD.className = 'detail-date linked'; tdD.textContent = fmtDate(proj.start_date);
+      const tdE = document.createElement('td'); tdE.className = 'detail-date linked';
+      const tdO = document.createElement('td'); tdO.className = 'detail-owner linked';
+      const tdSt = document.createElement('td'); tdSt.className = 'detail-status';
+      const tdM  = document.createElement('td'); tdM.className  = 'detail-memo-cell';
+      trShip.appendChild(tdD); trShip.appendChild(tdE);
+      trShip.appendChild(tdO); trShip.appendChild(tdSt); trShip.appendChild(tdM);
+    });
+    tbody.appendChild(trShip);
+
+    table.appendChild(tbody);
+    const container = document.getElementById('detail-table-container');
+    container.innerHTML = '';
+    container.appendChild(table);
+  }
+
   init();
 </script>
 </body>
