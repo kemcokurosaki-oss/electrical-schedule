@@ -448,6 +448,44 @@
     .btn-rm-proj   { background: #e2e8f0; color: #444; }
     .btn-rm-proj:hover:not(:disabled)   { background: #cbd5e0; }
 
+    /* ─── flatpickr カスタム ─────────────────────────── */
+    .flatpickr-calendar {
+      font-family: 'Meiryo', 'メイリオ', sans-serif;
+      font-size: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      border-radius: 6px;
+    }
+    .flatpickr-day.selected,
+    .flatpickr-day.startRange,
+    .flatpickr-day.endRange {
+      background: #1a3a5c;
+      border-color: #1a3a5c;
+    }
+    .flatpickr-day.inRange {
+      background: #bee3f8;
+      border-color: #bee3f8;
+      box-shadow: -5px 0 0 #bee3f8, 5px 0 0 #bee3f8;
+    }
+    .flatpickr-day.today { border-color: #e53e3e; }
+    .flatpickr-months .flatpickr-month { background: #1a3a5c; color: white; }
+    .flatpickr-current-month .flatpickr-monthDropdown-months { background: #1a3a5c; }
+    .flatpickr-weekday { background: #2c5282; color: #a0c4e8; font-weight: bold; }
+    .flatpickr-months .flatpickr-prev-month,
+    .flatpickr-months .flatpickr-next-month { fill: white; color: white; }
+    /* 範囲選択ラベル */
+    #fp-range-label {
+      position: fixed;
+      display: none;
+      background: #1a3a5c;
+      color: white;
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 4px 4px 0 0;
+      z-index: 99999;
+      pointer-events: none;
+      white-space: nowrap;
+    }
+
     /* ─── インライン編集 ─────────────────────────────── */
     .inline-select {
       width: 100%;
