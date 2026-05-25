@@ -2129,26 +2129,21 @@
       tbody.appendChild(trOwner);
     });
 
-    // 出荷日行（3行）
+    // 出荷日行（1行）
     const trShip1 = document.createElement('tr'); trShip1.className = 'row-shipping';
-    const trShip2 = document.createElement('tr'); trShip2.className = 'row-shipping detail-row-stat';
-    const trShip3 = document.createElement('tr'); trShip3.className = 'row-shipping detail-row-owner';
 
-    const tdNoS   = document.createElement('td'); tdNoS.className = 'col-no'; tdNoS.rowSpan = 3; tdNoS.textContent = '23';
-    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.rowSpan = 3; tdItemS.textContent = '工場出荷日';
+    const tdNoS   = document.createElement('td'); tdNoS.className = 'col-no'; tdNoS.textContent = '23';
+    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.textContent = '工場出荷日';
     trShip1.appendChild(tdNoS); trShip1.appendChild(tdItemS);
 
     projsForNum.forEach(proj => {
-      const tdD  = document.createElement('td'); tdD.className  = 'detail-date linked'; tdD.textContent = fmtDate(proj.start_date);
-      const tdE  = document.createElement('td'); tdE.className  = 'detail-date linked';
-      const tdM  = document.createElement('td'); tdM.className  = 'detail-memo-cell'; tdM.rowSpan = 3;
-      const tdSt = document.createElement('td'); tdSt.className = 'detail-status'; tdSt.colSpan = 2;
-      const tdO  = document.createElement('td'); tdO.className  = 'detail-owner linked'; tdO.colSpan = 2;
-      trShip1.appendChild(tdD); trShip1.appendChild(tdE); trShip1.appendChild(tdM);
-      trShip2.appendChild(tdSt);
-      trShip3.appendChild(tdO);
+      const tdShip = document.createElement('td');
+      tdShip.className = 'detail-date linked';
+      tdShip.colSpan = 3;
+      tdShip.textContent = fmtDate(proj.start_date);
+      trShip1.appendChild(tdShip);
     });
-    tbody.appendChild(trShip1); tbody.appendChild(trShip2); tbody.appendChild(trShip3);
+    tbody.appendChild(trShip1);
 
     table.appendChild(tbody);
     const container = document.getElementById('detail-table-container');
