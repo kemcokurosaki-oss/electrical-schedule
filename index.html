@@ -268,12 +268,14 @@
 
     #gantt-container { flex: 1; overflow: hidden; }
 
-    /* ガントバーの色 */
-    .gantt_task_line.gantt-wip     { background-color: #68d391; border-color: #38a169; }
-    .gantt_task_line.gantt-done    { background-color: #a0aec0; border-color: #718096; }
-    .gantt_task_line.gantt-na      { background-color: #e2e8f0; border-color: #cbd5e0; }
-    .gantt_task_line.gantt-pending { background-color: #90cdf4; border-color: #3182ce; }
-    .gantt_task_line.gantt-project { background-color: #2d6a9f; border-color: #1a3a5c; height: 14px !important; margin-top: 7px !important; }
+    /* ガントバーの色（部署別） */
+    .gantt_task_line.gantt-dept-eigyo  { background-color: #f5a84a; border-color: #d47e1a; }
+    .gantt_task_line.gantt-dept-sekkei { background-color: #5ba3d9; border-color: #2e7bb5; }
+    .gantt_task_line.gantt-dept-denki  { background-color: #e07aab; border-color: #b8508a; }
+    .gantt_task_line.gantt-dept-sosou  { background-color: #e06060; border-color: #b83636; }
+    .gantt_task_line.gantt-dept-denso  { background-color: #a97dd9; border-color: #7a52b5; }
+    .gantt_task_line.gantt-dept-other  { background-color: #90cdf4; border-color: #3182ce; }
+    .gantt_task_line.gantt-project     { background-color: #2d6a9f; border-color: #1a3a5c; height: 14px !important; margin-top: 7px !important; }
 
     /* 担当者テキストが枠に収まらない場合に … で省略 */
     .gantt_task_content { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
