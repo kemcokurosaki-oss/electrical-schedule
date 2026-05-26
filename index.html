@@ -2321,6 +2321,13 @@
           tdStatus.addEventListener('dblclick', () => editStatusCell(tdStatus, tdStart, proj, proc));
 
           tdOwner.addEventListener('dblclick', () => editOwnerCell(tdOwner, proj, proc));
+        } else {
+          tdStart.addEventListener('dblclick', () => editLinkedDetailDateCell(tdStart, tdEnd, proj, proc));
+          tdEnd.addEventListener('dblclick',   () => editLinkedDetailDateCell(tdStart, tdEnd, proj, proc));
+
+          tdStatus.addEventListener('dblclick', () => editLinkedStatusCell(tdStatus, tdStart, proj, proc));
+
+          tdOwner.addEventListener('dblclick', () => editLinkedOwnerCell(tdOwner, proj, proc));
         }
 
         const ta = document.createElement('textarea');
