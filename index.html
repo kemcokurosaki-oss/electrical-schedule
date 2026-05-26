@@ -1750,7 +1750,7 @@
 
     gantt.templates.task_class = (start, end, task) => {
       if (task.type === gantt.config.types.project) return 'gantt-project';
-      return `gantt-${task.statusClass || 'pending'}`;
+      return `gantt-dept-${task.deptClass || 'other'}`;
     };
 
     gantt.templates.task_text = (start, end, task) => {
