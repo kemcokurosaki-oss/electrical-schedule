@@ -1243,11 +1243,11 @@
       trOwner.appendChild(tdItemO);
 
       const ownerSpans = [];
-      projects.forEach(proj => {
+      projects.forEach((proj, pi) => {
         const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
         const rec = statusMap[statusKey] || {};
         const td = document.createElement('td');
-        td.className = 'cell-owner' + (proc.linked ? ' linked' : '');
+        td.className = 'cell-owner' + (proc.linked ? ' linked' : '') + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
         const span = document.createElement('span');
         let displayOwner;
         if (proc.linked) {
