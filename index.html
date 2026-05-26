@@ -1173,9 +1173,9 @@
       const tr = document.createElement('tr');
       const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
       const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '客先'; tr.appendChild(thItem);
-      projectGroups.forEach(g => {
+      projectGroups.forEach((g, gi) => {
         const th = document.createElement('th');
-        th.className = 'header-client';
+        th.className = 'header-client' + (gi < projectGroups.length - 1 ? ' proj-group-end' : '');
         th.textContent = g.customer_name || '─';
         if (g.customer_name) th.title = g.customer_name;
         if (g.count > 1) th.colSpan = g.count;
