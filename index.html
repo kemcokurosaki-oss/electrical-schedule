@@ -2110,7 +2110,7 @@
         statusSpan.className = 'status-label';
         if (proc.linked) {
           const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-          applyStatusStyle(tdStart, tdStatus, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date));
+          applyStatusStyle(tdStart, tdStatus, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date, currentLinkedMap[lk]?.status));
         } else {
           applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
         }
