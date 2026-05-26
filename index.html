@@ -1864,6 +1864,48 @@
     activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
   }
 
+  function editLinkedDetailDateCell(tdStart, tdEnd, proj, proc) {
+    closeActiveInlineEdit();
+    ensureDatePicker();
+    const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
+    const linkedData = currentLinkedMap[lk] || {};
+
+    const rect = tdStart.getBoundingClientRect();
+    const label  = document.getElementById('fp-range-label');
+    const anchor = document.getElementById('fp-anchor');
+    anchor.style.top  = `${rect.top}px`;
+    anchor.style.left = `${rect.right}px`;
+
+    const posLabel = () => {
+      const cal = document.querySelector('.flatpickr-calendar.open');
+      if (cal) {
+        const cr = cal.getBoundingClientRect();
+        label.style.top   = `${cr.top - 22}px`;
+        label.style.left  = `${cr.left}px`;
+        label.style.width = `${cr.width}px`;
+      }
+    };
+    requestAnimationFrame(posLabel);
+
+    datePickerSave = async (newStart, newEnd) => {
+      tdStart.textContent = fmtDate(newStart);
+      tdEnd.textContent   = fmtDate(newEnd);
+      const cur = currentLinkedMap[lk] || {};
+      await saveLinkedRecord(cur.id, { start_date: newStart, end_date: newEnd, owner: cur.owner, status: cur.status });
+      currentLinkedMap[lk] = { ...cur, start_date: newStart, end_date: newEnd };
+    };
+
+    const defaultDates = [linkedData.start_date, linkedData.end_date].filter(Boolean);
+    datePicker.setDate(defaultDates, false);
+    const initLabel = defaultDates.length === 2
+      ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
+      : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
+    label.textContent = initLabel;
+
+    datePicker.open();
+    activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
+  }
+
   // ─── ガントチャート ───────────────────────────────────
   function initGantt() {
     gantt.plugins({ marker: true });
