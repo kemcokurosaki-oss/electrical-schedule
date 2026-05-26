@@ -1916,7 +1916,7 @@
     } else if (unit === 'week') {
       gantt.config.scales = [
         { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
-        { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}` },
+        { unit: 'week',  step: 1, format: d => `${d.getDate()}` },
       ];
       gantt.config.min_column_width = 40;
     }
