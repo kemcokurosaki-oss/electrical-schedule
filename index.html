@@ -1144,9 +1144,9 @@
       const tr = document.createElement('tr');
       const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
       const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '工番'; tr.appendChild(thItem);
-      projectGroups.forEach(g => {
+      projectGroups.forEach((g, gi) => {
         const th = document.createElement('th');
-        th.className = 'header-number';
+        th.className = 'header-number' + (gi < projectGroups.length - 1 ? ' proj-group-end' : '');
         th.textContent = g.project_number;
         if (g.count > 1) th.colSpan = g.count;
         const btn = document.createElement('button');
