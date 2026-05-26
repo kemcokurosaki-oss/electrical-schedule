@@ -1899,7 +1899,7 @@
 
   function setZoom(unit) {
     currentZoom = unit;
-    ['zoom-day', 'zoom-week', 'zoom-month'].forEach(id => {
+    ['zoom-day', 'zoom-week'].forEach(id => {
       document.getElementById(id).classList.toggle('zoom-active', id === `zoom-${unit}`);
     });
     if (unit === 'day') {
