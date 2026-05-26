@@ -1214,9 +1214,9 @@
       const dateTds = [];
       const dateRangeSpans = [];
 
-      projects.forEach(proj => {
+      projects.forEach((proj, pi) => {
         const td = document.createElement('td');
-        td.className = 'cell-date' + (proc.linked ? ' linked' : '');
+        td.className = 'cell-date' + (proc.linked ? ' linked' : '') + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
         if (proc.linked) {
           const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
           td.textContent = fmtDate(linkedMap[key]?.start_date);
