@@ -1130,6 +1130,13 @@
       }
     });
 
+    let _cum = 0;
+    const groupEndIdx = new Set();
+    projectGroups.forEach((g, gi) => {
+      _cum += g.count;
+      if (gi < projectGroups.length - 1) groupEndIdx.add(_cum - 1);
+    });
+
     thead.innerHTML = '';
 
     // 行1: 工番 + 詳細ボタン
