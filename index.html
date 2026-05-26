@@ -1837,6 +1837,7 @@
           owner:       rec.tantousha || '',
           statusClass: getStatusClass(rec.status),
           statusLabel: rec.status || '',
+          deptClass:   PROCESS_DEPT[proc.no] || 'other',
           start_date_str: startDate,
           end_date_str:   endDate || null,
           projNum:  proj.project_number,
