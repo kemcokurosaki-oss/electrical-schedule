@@ -2022,8 +2022,16 @@
       if (deptClass) trDate.className = deptClass;
 
       const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.rowSpan = 3; tdNo.textContent = proc.no;
-      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.rowSpan = 3; tdItem.textContent = proc.name;
+      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.rowSpan = 3;
       if (proc.linked) tdItem.title = '全体工程表と連携';
+      const nameSpan = document.createElement('span'); nameSpan.textContent = proc.name; tdItem.appendChild(nameSpan);
+      if (PROCESS_FLOW[proc.no]) {
+        tdItem.appendChild(document.createElement('br'));
+        const flowSpan = document.createElement('span');
+        flowSpan.textContent = PROCESS_FLOW[proc.no];
+        flowSpan.style.cssText = 'font-size:10px;color:#888;font-weight:normal;';
+        tdItem.appendChild(flowSpan);
+      }
       trDate.appendChild(tdNo);
       trDate.appendChild(tdItem);
 
