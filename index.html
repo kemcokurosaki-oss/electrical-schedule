@@ -938,7 +938,7 @@
     document.getElementById('view-table').style.display = 'none';
     document.getElementById('view-gantt').classList.add('active');
     currentDetailProjNum = null;
-    showGantt();
+    setTimeout(() => showGantt(), 50);
   });
 
   // ─── ポップアップ操作 ─────────────────────────────────
@@ -1717,6 +1717,7 @@
 
   // ─── ガントチャート ───────────────────────────────────
   function initGantt() {
+    gantt.plugins({ marker: true });
     gantt.config.date_format = '%Y-%m-%d';
     gantt.config.scale_height = 48;
     gantt.config.row_height   = 28;
@@ -1854,15 +1855,33 @@
   }
 
   function showGantt() {
+    const container = document.getElementById('gantt-container');
+    const toolbar   = document.getElementById('gantt-toolbar');
+    const h = window.innerHeight - 44 - toolbar.offsetHeight;
+    container.style.height = h + 'px';
+
+    console.log('[Gantt] showGantt called, container height:', h);
+
     if (!ganttInitialized) {
-      initGantt();
-      ganttInitialized = true;
+      try {
+        initGantt();
+        ganttInitialized = true;
+        console.log('[Gantt] initGantt OK');
+      } catch(e) {
+        console.error('[Gantt] initGantt ERROR:', e);
+        return;
+      }
     }
+
     gantt.clearAll();
     const data = buildGanttData();
+    console.log('[Gantt] tasks count:', data.data.length, data.data.slice(0,3));
+
     if (data.data.length > 0) {
       gantt.parse(data);
       gantt.showDate(new Date());
+    } else {
+      gantt.render();
     }
   }
 
