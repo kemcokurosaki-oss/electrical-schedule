@@ -1275,7 +1275,7 @@
         const dateTd = dateTds[pi];
 
         const td = document.createElement('td');
-        td.className = 'cell-status';
+        td.className = 'cell-status' + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
 
         const statusSpan = document.createElement('span');
         statusSpan.className = 'status-label';
