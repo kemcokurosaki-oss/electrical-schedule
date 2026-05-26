@@ -1914,12 +1914,6 @@
         { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}` },
       ];
       gantt.config.min_column_width = 40;
-    } else {
-      gantt.config.scales = [
-        { unit: 'year',  step: 1, format: '%Y年' },
-        { unit: 'month', step: 1, format: '%m月' },
-      ];
-      gantt.config.min_column_width = 40;
     }
     gantt.render();
   }
