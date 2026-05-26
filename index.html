@@ -1189,9 +1189,9 @@
       const tr = document.createElement('tr');
       const thNo = document.createElement('th'); thNo.className = 'col-no'; tr.appendChild(thNo);
       const thItem = document.createElement('th'); thItem.className = 'col-item'; thItem.textContent = '機種'; tr.appendChild(thItem);
-      projects.forEach(p => {
+      projects.forEach((p, pi) => {
         const th = document.createElement('th');
-        th.className = 'header-machine';
+        th.className = 'header-machine' + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
         th.textContent = p.machine || '─';
         tr.appendChild(th);
       });
