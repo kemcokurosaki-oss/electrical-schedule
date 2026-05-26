@@ -1725,7 +1725,7 @@
     gantt.config.scale_height = 48;
     gantt.config.row_height   = 28;
     gantt.config.task_height  = 18;
-    gantt.config.min_column_width = 40;
+    gantt.config.min_column_width = 27;
     gantt.config.fit_tasks = false;
     gantt.config.drag_move    = false;
     gantt.config.drag_resize  = false;
@@ -1912,13 +1912,13 @@
         { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
         { unit: 'day',   step: 1, format: d => d.getDate() },
       ];
-      gantt.config.min_column_width = 40;
+      gantt.config.min_column_width = 27;
     } else if (unit === 'week') {
       gantt.config.scales = [
         { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
         { unit: 'week',  step: 1, format: d => `${d.getDate()}` },
       ];
-      gantt.config.min_column_width = 40;
+      gantt.config.min_column_width = 27;
     }
     gantt.render();
   }
