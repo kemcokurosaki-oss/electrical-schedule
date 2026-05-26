@@ -1733,7 +1733,7 @@
     gantt.config.details_on_dblclick = false;
 
     gantt.config.scales = [
-      { unit: 'month', step: 1, format: '%Y年%m月' },
+      { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
       { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}` },
     ];
 
