@@ -1264,7 +1264,7 @@
       const trStatus = document.createElement('tr');
       trStatus.className = `row-status${deptClass}`;
       const tdNoS = document.createElement('td'); tdNoS.className = 'col-no';
-      const tdItemS = document.createElement('td'); tdItemS.className = 'col-item';
+      const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.textContent = PROCESS_FLOW[proc.no] || '';
       trStatus.appendChild(tdNoS);
       trStatus.appendChild(tdItemS);
 
