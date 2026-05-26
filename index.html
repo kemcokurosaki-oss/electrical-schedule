@@ -1073,14 +1073,14 @@
 
     const { data: linkedTasks } = await sb
       .from('tasks')
-      .select('project_number, machine, text, start_date, end_date, owner, status')
+      .select('project_number, machine, text, start_date, end_date, owner, status, is_completed')
       .in('project_number', projectNumbers)
       .in('text', linkedTexts);
 
     currentLinkedMap = {};
     (linkedTasks || []).forEach(t => {
       const key = `${t.project_number}__${t.machine}__${t.text}`;
-      if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '', status: t.status || '' };
+      if (!currentLinkedMap[key]) currentLinkedMap[key] = { start_date: t.start_date, end_date: t.end_date, owner: t.owner || '', status: t.is_completed ? '完了' : (t.status || '') };
     });
 
     const { data: custData } = await sb
