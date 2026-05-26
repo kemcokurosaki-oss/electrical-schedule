@@ -89,7 +89,6 @@
       white-space: nowrap;
       background: white;
     }
-    #main-table { table-layout: fixed; }
 
     th, td {
       border-right: 1px solid #bbb;
@@ -104,8 +103,8 @@
       background: white;
       z-index: 10;
     }
-    .col-no  { left: 0; width: 36px; min-width: 36px; max-width: 36px; }
-    .col-item { left: 36px; width: 300px; min-width: 300px; max-width: 300px; text-align: left; }
+    .col-no  { left: 0; min-width: 36px; max-width: 36px; }
+    .col-item { left: 36px; min-width: 300px; max-width: 300px; text-align: left; }
 
     thead tr th {
       background: #1a3a5c;
@@ -121,7 +120,7 @@
 
     .header-client  { background: #2c5282 !important; font-size: 11px; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
     .header-number  { background: #2d6a9f !important; }
-    .header-machine { background: #3182ce !important; overflow: hidden; text-overflow: ellipsis; width: 105px; }
+    .header-machine { background: #3182ce !important; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
 
     td.cell-date {
       min-width: 105px;
@@ -135,12 +134,6 @@
       font-size: 11px;
       color: #333;
       cursor: pointer;
-    }
-    td.cell-owner span {
-      display: block;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
     td.cell-status {
       min-width: 105px;
