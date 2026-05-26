@@ -1807,9 +1807,10 @@
         let endDate   = rec.end_date;
 
         // 連携工程はリンク日付をフォールバック
-        if (!startDate && proc.linked) {
+        if (proc.linked) {
           const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-          startDate = currentLinkedMap[lk]?.start_date;
+          if (!startDate) startDate = currentLinkedMap[lk]?.start_date;
+          if (!endDate)   endDate   = currentLinkedMap[lk]?.end_date;
         }
 
         if (!startDate) return;
