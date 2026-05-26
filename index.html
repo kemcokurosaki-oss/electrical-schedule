@@ -1307,9 +1307,9 @@
     const tdItemShip = document.createElement('td'); tdItemShip.className = 'col-item'; tdItemShip.textContent = '工場出荷日';
     trShip.appendChild(tdNoShip);
     trShip.appendChild(tdItemShip);
-    projects.forEach(proj => {
+    projects.forEach((proj, pi) => {
       const td = document.createElement('td');
-      td.className = 'cell-date linked';
+      td.className = 'cell-date linked' + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
       td.textContent = fmtDate(proj.start_date);
       trShip.appendChild(td);
     });
