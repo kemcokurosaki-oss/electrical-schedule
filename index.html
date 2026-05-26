@@ -1250,9 +1250,6 @@
         }
         span.textContent = displayOwner;
         td.appendChild(span);
-        td.addEventListener('mouseenter', () => {
-          td.title = td.scrollWidth > td.clientWidth ? displayOwner : '';
-        });
         ownerSpans.push(span);
         trOwner.appendChild(td);
       });
