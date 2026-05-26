@@ -1783,13 +1783,21 @@
       return false;
     });
 
-    gantt.addMarker({
-      start_date: new Date(),
+    gantt.init('gantt-container');
+  }
+
+  let todayMarkerId = null;
+  function updateTodayMarker() {
+    if (todayMarkerId !== null) {
+      try { gantt.deleteMarker(todayMarkerId); } catch(e) {}
+    }
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    todayMarkerId = gantt.addMarker({
+      start_date: today,
       css:   'today-line',
       title: '今日',
     });
-
-    gantt.init('gantt-container');
   }
 
   function buildGanttData() {
