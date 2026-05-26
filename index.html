@@ -1131,21 +1131,6 @@
 
     thead.innerHTML = '';
 
-    // colgroup で全列の幅を固定（table-layout:fixed と併用）
-    const table = document.getElementById('main-table');
-    const oldCg = table.querySelector('colgroup');
-    if (oldCg) table.removeChild(oldCg);
-    const cg = document.createElement('colgroup');
-    const colNo   = document.createElement('col'); colNo.style.width   = '36px';
-    const colItem = document.createElement('col'); colItem.style.width = '300px';
-    cg.appendChild(colNo);
-    cg.appendChild(colItem);
-    projects.forEach(() => {
-      const col = document.createElement('col'); col.style.width = '105px';
-      cg.appendChild(col);
-    });
-    table.insertBefore(cg, table.firstChild);
-
     // 行1: 工番 + 詳細ボタン
     {
       const tr = document.createElement('tr');
