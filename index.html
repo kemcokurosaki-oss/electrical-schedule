@@ -1909,7 +1909,7 @@
     });
     if (unit === 'day') {
       gantt.config.scales = [
-        { unit: 'month', step: 1, format: '%Y年%m月' },
+        { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
         { unit: 'day',   step: 1, format: '%d' },
       ];
       gantt.config.min_column_width = 40;
