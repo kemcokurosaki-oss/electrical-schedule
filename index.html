@@ -1295,6 +1295,11 @@
           dateTd.addEventListener('dblclick', () => editDateCell(dateTd, proj, proc));
           const ownerTd = trOwner.children[pi + 2];
           ownerTd.addEventListener('dblclick', () => editOwnerCell(ownerTd, proj, proc));
+        } else {
+          td.addEventListener('dblclick', () => editLinkedStatusCell(td, dateTd, proj, proc));
+          dateTd.addEventListener('dblclick', () => editLinkedDateCell(dateTd, proj, proc));
+          const ownerTd = trOwner.children[pi + 2];
+          ownerTd.addEventListener('dblclick', () => editLinkedOwnerCell(ownerTd, proj, proc));
         }
 
         trStatus.appendChild(td);
