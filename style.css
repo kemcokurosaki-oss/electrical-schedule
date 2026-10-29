@@ -437,12 +437,12 @@ tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #EBD9F5 !impo
 .manage-item-detail { font-size: 11px; color: #666; }
 .manage-note { font-size: 11px; color: #555; }
 .manage-add-row { display: flex; gap: 6px; }
-.manage-add-row input, #manage-search {
+.manage-add-row input {
   padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e0; border-radius: 3px;
   font-family: 'Meiryo', 'メイリオ', sans-serif;
 }
 .manage-add-row input { width: 110px; }
-.manage-add-row button, .manage-open-btn, .manage-add-chip {
+.manage-add-row button {
   padding: 3px 10px; border-radius: 3px; border: none; cursor: pointer; font-size: 11px;
   font-family: 'Meiryo', 'メイリオ', sans-serif;
 }
@@ -458,9 +458,6 @@ tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #EBD9F5 !impo
 }
 .manage-chip button:disabled { opacity: 0.3; cursor: default; }
 .manage-chip select { font-size: 11px; max-width: 110px; }
-.manage-add-chip { background: #e2e8f0; color: #333; }
-.manage-add-chip:hover { background: #cbd5e0; }
-.manage-open-btn { background: none; color: #2d6a9f; padding: 0; text-decoration: underline; }
 
 /* ─── flatpickr カスタム ─────────────────────────── */
 .flatpickr-calendar {

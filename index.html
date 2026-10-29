@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ja.js" integrity="sha384-mKor8U8jwukUkfxaFPCsxKF9S62PXq4gG7zcZ5yQ2x3KL1msprJZeFlKFEDeeb5V" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261029">
+  <link rel="stylesheet" href="style.css?v=20261029b">
 </head>
 <body>
 
@@ -69,13 +69,14 @@
     </div>
     <div class="manage-body">
       <div class="manage-status-bar" id="manage-status"></div>
-      <div class="manage-note">電気の作業がある機種だけを列として追加してください。全体工程表に無い機種名（例: FSBT1）は下の欄から追加できます。</div>
+      <div class="manage-note">工番と機種は、プルダウンから選ぶか直接入力して「列を追加」を押してください。全体工程表に無い機種名（例: FSBT1）も入力できます。</div>
       <div class="manage-add-row">
-        <input type="text" id="manage-add-pn" placeholder="工番">
-        <input type="text" id="manage-add-machine" placeholder="機種（空欄可）">
+        <input type="text" id="manage-add-pn" list="manage-pn-list" placeholder="工番" autocomplete="off">
+        <datalist id="manage-pn-list"></datalist>
+        <input type="text" id="manage-add-machine" list="manage-machine-list" placeholder="機種（空欄可）" autocomplete="off">
+        <datalist id="manage-machine-list"></datalist>
         <button id="manage-add-btn">列を追加</button>
       </div>
-      <input type="search" id="manage-search" placeholder="工番・客先で絞り込み">
       <div class="manage-list" id="manage-list"></div>
     </div>
   </div>
@@ -122,14 +123,14 @@
   <div id="gantt-container"></div>
 </div>
 
-<script src="config.js?v=20261029"></script>
-<script src="state.js?v=20261029"></script>
-<script src="utils.js?v=20261029"></script>
-<script src="table.js?v=20261029"></script>
-<script src="detail.js?v=20261029"></script>
-<script src="edit.js?v=20261029"></script>
-<script src="gantt.js?v=20261029"></script>
-<script src="manage.js?v=20261029"></script>
-<script src="app.js?v=20261029"></script>
+<script src="config.js?v=20261029b"></script>
+<script src="state.js?v=20261029b"></script>
+<script src="utils.js?v=20261029b"></script>
+<script src="table.js?v=20261029b"></script>
+<script src="detail.js?v=20261029b"></script>
+<script src="edit.js?v=20261029b"></script>
+<script src="gantt.js?v=20261029b"></script>
+<script src="manage.js?v=20261029b"></script>
+<script src="app.js?v=20261029b"></script>
 </body>
 </html>

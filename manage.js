@@ -1,21 +1,20 @@
 // ─── 工番管理モーダル ─────────────────────────────────
 // 電気の作業がある「工番＋機種」を選んで列として登録する（denki_columns）
 let manageCandidates = null;  // 全体工程表にある工番ごとの { customer, machines }
-const manageOpen = new Set(); // 候補を開いている工番
 
 document.getElementById('btn-manage').addEventListener('click', openManageModal);
 document.getElementById('manage-close').addEventListener('click', closeManageModal);
 document.getElementById('manage-modal').addEventListener('click', e => {
   if (e.target === document.getElementById('manage-modal')) closeManageModal();
 });
-document.getElementById('manage-search').addEventListener('input', renderManageList);
+document.getElementById('manage-add-pn').addEventListener('input', updateMachineOptions);
 document.getElementById('manage-add-btn').addEventListener('click', async () => {
   const pn = document.getElementById('manage-add-pn').value.trim();
   const mc = document.getElementById('manage-add-machine').value.trim();
   if (!pn) { alert('工番を入力してください'); return; }
   if (await addColumn(pn, mc)) {
-    document.getElementById('manage-add-pn').value = '';
-    document.getElementById('manage-add-machine').value = '';
+    document.getElementById('manage-add-machine').value = ''; // 同じ工番の別の機種を続けて追加しやすいよう工番は残す
+    updateMachineOptions();
   }
 });
 
@@ -67,30 +66,61 @@ function machineLabel(m) {
   return m || '(機種なし)';
 }
 
-function renderManageList() {
-  const list = document.getElementById('manage-list');
-  const q = document.getElementById('manage-search').value.trim().toLowerCase();
-
+function columnsByProject() {
   const cols = {};
   currentProjects.forEach(p => { (cols[p.project_number] = cols[p.project_number] || []).push(p); });
-
-  const pns = new Set([...manageCandidates.keys(), ...Object.keys(cols)]);
-  const items = [...pns]
-    .map(pn => ({ pn, cand: manageCandidates.get(pn) || { customer: '', machines: new Set() }, cols: cols[pn] || [] }))
-    .filter(it => !q || it.pn.toLowerCase().includes(q) || (it.cand.customer || '').toLowerCase().includes(q))
-    .sort((a, b) => (b.cols.length > 0) - (a.cols.length > 0) || a.pn.localeCompare(b.pn));
-
-  const projCount = Object.keys(cols).length;
-  document.getElementById('manage-status').textContent =
-    projCount === 0 ? '表示中の列はありません' : `${projCount}工番・${currentProjects.length}列を表示中`;
-
-  list.innerHTML = '';
-  items.forEach(it => list.appendChild(renderManageItem(it)));
+  return cols;
 }
 
-function renderManageItem({ pn, cand, cols }) {
+// 表示中の工番だけを一覧にする（追加は上の入力欄から）
+function renderManageList() {
+  const list = document.getElementById('manage-list');
+  const cols = columnsByProject();
+  const pns = Object.keys(cols).sort();
+
+  document.getElementById('manage-status').textContent =
+    pns.length === 0 ? '表示中の列はありません' : `${pns.length}工番・${currentProjects.length}列を表示中`;
+
+  list.innerHTML = '';
+  pns.forEach(pn => list.appendChild(renderManageItem(pn, cols[pn])));
+  updatePnOptions();
+  updateMachineOptions();
+}
+
+function setDatalist(id, options) {
+  const dl = document.getElementById(id);
+  dl.innerHTML = '';
+  options.forEach(({ value, label }) => {
+    const o = document.createElement('option');
+    o.value = value;
+    if (label) o.label = label;
+    dl.appendChild(o);
+  });
+}
+
+// 工番のプルダウン: 全体工程表にあって、まだ表示していない工番
+function updatePnOptions() {
+  const shown = columnsByProject();
+  setDatalist('manage-pn-list', [...manageCandidates.keys()]
+    .filter(pn => !shown[pn])
+    .sort()
+    .map(pn => ({ value: pn, label: manageCandidates.get(pn).customer })));
+}
+
+// 機種のプルダウン: 入力中の工番で、全体工程表にある機種のうち、まだ列にしていないもの
+function updateMachineOptions() {
+  const pn = document.getElementById('manage-add-pn').value.trim();
+  const cand = manageCandidates && manageCandidates.get(pn);
+  const shown = new Set((columnsByProject()[pn] || []).map(c => c.machine));
+  setDatalist('manage-machine-list', cand
+    ? [...cand.machines].filter(m => m && !shown.has(m)).sort().map(m => ({ value: m }))
+    : []);
+}
+
+function renderManageItem(pn, cols) {
+  const cand = manageCandidates.get(pn) || { customer: '', machines: new Set() };
   const item = document.createElement('div');
-  item.className = 'manage-item' + (cols.length ? ' is-visible' : '');
+  item.className = 'manage-item is-visible';
 
   const head = document.createElement('div');
   head.className = 'manage-item-head';
@@ -99,39 +129,10 @@ function renderManageItem({ pn, cand, cols }) {
   head.appendChild(num); head.appendChild(detail);
   item.appendChild(head);
 
-  // 表示中の列
-  if (cols.length) {
-    const row = document.createElement('div');
-    row.className = 'manage-chips';
-    cols.forEach((col, i) => row.appendChild(renderColumnChip(col, i, cols, cand)));
-    item.appendChild(row);
-  }
-
-  // 追加できる機種（全体工程表にある機種）
-  const registered = new Set(cols.map(c => c.machine));
-  const addable = [...cand.machines].filter(m => !registered.has(m)).sort();
-  const isOpen = cols.length > 0 || manageOpen.has(pn) || addable.length === 0;
-  if (addable.length) {
-    const row = document.createElement('div');
-    row.className = 'manage-chips manage-candidates';
-    if (isOpen) {
-      addable.forEach(m => {
-        const b = document.createElement('button');
-        b.className = 'manage-add-chip';
-        b.textContent = '＋' + machineLabel(m);
-        b.title = 'この機種を列に追加';
-        b.addEventListener('click', () => addColumn(pn, m));
-        row.appendChild(b);
-      });
-    } else {
-      const b = document.createElement('button');
-      b.className = 'manage-open-btn';
-      b.textContent = `機種を選ぶ（${addable.length}）`;
-      b.addEventListener('click', () => { manageOpen.add(pn); renderManageList(); });
-      row.appendChild(b);
-    }
-    item.appendChild(row);
-  }
+  const row = document.createElement('div');
+  row.className = 'manage-chips';
+  cols.forEach((col, i) => row.appendChild(renderColumnChip(col, i, cols, cand)));
+  item.appendChild(row);
   return item;
 }
 
