@@ -89,29 +89,17 @@ function renderDetailTable(projNum) {
     trOwner.className = (deptClass ? deptClass + ' ' : '') + 'detail-row-owner';
 
     projsForNum.forEach(proj => {
-      const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-      const rec = statusMap[key] || {};
-
-      let startDate, endDate, owner;
-      if (proc.linked) {
-        const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        startDate = currentLinkedMap[lk]?.start_date || '';
-        endDate   = currentLinkedMap[lk]?.end_date   || '';
-        owner     = currentLinkedMap[lk]?.owner || '';
-      } else {
-        startDate = rec.start_date || '';
-        endDate   = rec.end_date   || '';
-        owner     = rec.tantousha  || '';
-      }
+      const d = getProcData(proj, proc);
+      const linkedCls = d.linked ? ' linked' : '';
 
       // Row1: 開始日 | 終了日 | メモ(rowspan=3)
       const tdStart = document.createElement('td');
-      tdStart.className = 'detail-date' + (proc.linked ? ' linked' : '');
-      tdStart.textContent = fmtDate(startDate);
+      tdStart.className = 'detail-date' + linkedCls;
+      tdStart.textContent = fmtDate(d.start_date);
 
       const tdEnd = document.createElement('td');
-      tdEnd.className = 'detail-date' + (proc.linked ? ' linked' : '');
-      tdEnd.textContent = fmtDate(endDate);
+      tdEnd.className = 'detail-date' + linkedCls;
+      tdEnd.textContent = fmtDate(d.end_date);
 
       const tdMemo = document.createElement('td');
       tdMemo.className = 'detail-memo-cell';
@@ -126,43 +114,31 @@ function renderDetailTable(projNum) {
       tdStatus.className = 'detail-status';
       tdStatus.colSpan = 2;
       const statusSpan = document.createElement('span');
-      statusSpan.className = 'status-label';
-      if (proc.linked) {
-        const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        applyStatusStyle(tdStart, tdStatus, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date, currentLinkedMap[lk]?.status));
-      } else {
-        applyStatusStyle(tdStart, tdStatus, statusSpan, rec.status || '');
-      }
+      applyStatusStyle(tdStart, tdStatus, statusSpan, d.status);
       tdStatus.appendChild(statusSpan);
       trStat.appendChild(tdStatus);
 
       // Row3: 担当者(colspan=2)
       const tdOwner = document.createElement('td');
-      tdOwner.className = 'detail-owner' + (proc.linked ? ' linked' : '');
+      tdOwner.className = 'detail-owner' + linkedCls;
       tdOwner.colSpan = 2;
       const ownerSpan = document.createElement('span');
-      ownerSpan.textContent = owner;
+      ownerSpan.textContent = d.owner || '';
       tdOwner.appendChild(ownerSpan);
       trOwner.appendChild(tdOwner);
 
-      if (!proc.linked) {
-        tdStart.addEventListener('dblclick', () => editDetailDateCell(tdStart, tdEnd, proj, proc));
-        tdEnd.addEventListener('dblclick',   () => editDetailDateCell(tdStart, tdEnd, proj, proc));
-        tdStatus.addEventListener('dblclick', () => editStatusCell(tdStatus, tdStart, proj, proc));
-        tdOwner.addEventListener('dblclick', () => editOwnerCell(tdOwner, proj, proc));
-      } else {
-        tdStart.addEventListener('dblclick', () => editLinkedDetailDateCell(tdStart, tdEnd, proj, proc));
-        tdEnd.addEventListener('dblclick',   () => editLinkedDetailDateCell(tdStart, tdEnd, proj, proc));
-        tdStatus.addEventListener('dblclick', () => editLinkedStatusCell(tdStatus, tdStart, proj, proc));
-        tdOwner.addEventListener('dblclick', () => editLinkedOwnerCell(tdOwner, proj, proc));
-      }
+      tdStart.addEventListener('dblclick',  () => editDateCell(tdStart, proj, proc));
+      tdEnd.addEventListener('dblclick',    () => editDateCell(tdStart, proj, proc));
+      tdStatus.addEventListener('dblclick', () => editStatusCell(tdStatus, proj, proc));
+      tdOwner.addEventListener('dblclick',  () => editOwnerCell(tdOwner, proj, proc));
 
       const ta = document.createElement('textarea');
       ta.className   = 'detail-memo';
       ta.rows        = 3;
-      ta.value       = rec.memo || '';
+      ta.value       = d.memo || '';
       ta.readOnly    = true;
       ta.addEventListener('dblclick', () => {
+        if (!canEdit) return;
         ta._origMemo = ta.value;
         ta.readOnly  = false;
         ta.focus();
@@ -174,7 +150,7 @@ function renderDetailTable(projNum) {
           ta.blur();
         }
         if (e.key === 'Escape') {
-          ta.value    = ta._origMemo ?? (rec.memo || '');
+          ta.value    = ta._origMemo ?? (d.memo || '');
           ta.readOnly = true;
           ta.blur();
         }
@@ -183,16 +159,8 @@ function renderDetailTable(projNum) {
         if (ta.readOnly) return;
         ta.readOnly = true;
         const newMemo = ta.value.trim() || null;
-        const curRec  = statusMap[key] || {};
-        if ((newMemo || null) === (curRec.memo || null)) return;
-        await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-          status: curRec.status || null, start_date: curRec.start_date || null,
-          end_date: curRec.end_date || null, tantousha: curRec.tantousha || null,
-          memo: newMemo,
-        });
-        const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !curRec.tantousha && !newMemo;
-        if (isEmpty) delete statusMap[key];
-        else statusMap[key] = { ...curRec, memo: newMemo };
+        if (newMemo === (getProcData(proj, proc).memo || null)) return;
+        await saveProc(proj, proc, { memo: newMemo });
       });
       tdMemo.appendChild(ta);
     });
@@ -213,7 +181,7 @@ function renderDetailTable(projNum) {
     const tdShip = document.createElement('td');
     tdShip.className = 'detail-date linked';
     tdShip.colSpan = 3;
-    tdShip.textContent = fmtDate(proj.start_date);
+    fillShipCell(tdShip, proj);
     trShip1.appendChild(tdShip);
   });
   tbody.appendChild(trShip1);

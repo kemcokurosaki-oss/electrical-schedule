@@ -1,3 +1,78 @@
+// ─── 保存 ─────────────────────────────────────────
+// 1つのセル（列×工程）を保存する。patch は変更する項目だけ: { status, start_date, end_date, owner, memo }
+// 連携工程（全体工程表のタスクがあるもの）は、日付・担当者・完了を tasks に、それ以外のステータスとメモを denki_process_status に保存する
+async function saveProc(proj, proc, patch) {
+  if (!canEdit) return false;
+  const key = procKey(proj, proc);
+  const cur = getProcData(proj, proc);
+  const next = {
+    status: cur.inputStatus, start_date: cur.start_date || null, end_date: cur.end_date || null,
+    owner: cur.owner || '', memo: cur.memo || null,
+    ...patch,
+  };
+  const pn = String(proj.project_number);
+
+  try {
+    let rec;
+    if (cur.linked) {
+      // 全体工程表のタスクは、変更した項目だけ書き換える
+      const upd = {};
+      if ('start_date' in patch) upd.start_date = next.start_date;
+      if ('end_date' in patch)   upd.end_date   = next.end_date;
+      if ('owner' in patch)      upd.owner      = next.owner || null;
+      if ('status' in patch)     upd.is_completed = next.status === '完了';
+      if (Object.keys(upd).length) {
+        const { data, error } = await sb.from('tasks').update(upd).eq('id', cur.taskId).select('id');
+        if (error) throw error;
+        if (!data.length) throw new Error('全体工程表のタスクを更新できませんでした（権限がないか、ログインが切れています）');
+      }
+      rec = { status: next.status === '完了' ? null : (next.status || null),
+              start_date: null, end_date: null, tantousha: null, memo: next.memo || null };
+    } else {
+      rec = { status: next.status || null, start_date: next.start_date, end_date: next.end_date,
+              tantousha: next.owner || null, memo: next.memo || null };
+    }
+
+    const isEmpty = !rec.status && !rec.start_date && !rec.end_date && !rec.tantousha && !rec.memo;
+    if (isEmpty) {
+      if (statusMap[key]) {
+        const { data, error } = await sb.from('denki_process_status').delete()
+          .eq('project_number', pn).eq('machine', proj.machine).eq('process_no', proc.no)
+          .select('process_no');
+        if (error) throw error;
+        if (!data.length) throw new Error('削除できませんでした（権限がないか、ログインが切れています）');
+        delete statusMap[key];
+      }
+    } else {
+      const { error } = await sb.from('denki_process_status').upsert(
+        { project_number: pn, machine: proj.machine, process_no: proc.no, ...rec },
+        { onConflict: 'project_number,machine,process_no' }
+      );
+      if (error) throw error;
+      statusMap[key] = rec;
+    }
+
+    if (cur.linked) {
+      Object.assign(linkedMap[key], {
+        start_date: next.start_date, end_date: next.end_date,
+        owner: next.owner || '', completed: next.status === '完了',
+      });
+    }
+    return true;
+  } catch (e) {
+    console.warn('保存エラー:', e);
+    alert(`保存できませんでした。\n${e.message || e}\n\n画面を保存済みの内容に戻します。ログインが切れている場合は、ページを再読み込みしてください。`);
+    await refreshDisplay();
+    return false;
+  }
+}
+
+// 保存後に表と詳細表示を描き直す
+function rerenderViews() {
+  renderTable(currentProjects);
+  if (currentDetailProjNum) renderDetailTable(currentDetailProjNum);
+}
+
 // ─── インライン編集 ───────────────────────────────
 function closeActiveInlineEdit() {
   if (!activeInlineEdit) return;
@@ -5,21 +80,36 @@ function closeActiveInlineEdit() {
   activeInlineEdit = null;
 }
 
-function editStatusCell(td, dateTd, proj, proc) {
-  closeActiveInlineEdit();
-  const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-  const rec = statusMap[key] || {};
-  const origHTML = td.innerHTML;
+function fillStatusOptions(sel) {
+  sel.innerHTML = '';
+  ['', ...STATUS_LIST].forEach(v => {
+    const o = document.createElement('option');
+    o.value = v; o.textContent = v || '─';
+    sel.appendChild(o);
+  });
+}
 
+function fillOwnerOptions(sel, procNo, current) {
+  sel.innerHTML = '<option value="">─</option>';
+  const names = [...(PROCESS_OWNERS[procNo] || [])];
+  if (current && !names.includes(current)) names.unshift(current); // 全体工程表で候補外の名前が入っているとき
+  names.forEach(name => {
+    const o = document.createElement('option');
+    o.value = name; o.textContent = name;
+    sel.appendChild(o);
+  });
+  sel.value = current || '';
+}
+
+// セルの中に select を出して、選んだら保存する
+function editSelectCell(td, fill, onPick) {
+  if (!canEdit) return;
+  closeActiveInlineEdit();
+  const origHTML = td.innerHTML;
   td.innerHTML = '';
   const sel = document.createElement('select');
   sel.className = 'inline-select';
-  [['', '─'], ['作業中', '作業中'], ['完了', '完了'], ['対象外', '対象外']].forEach(([v, t]) => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = t;
-    sel.appendChild(o);
-  });
-  sel.value = rec.status || '';
+  fill(sel);
   td.appendChild(sel);
   sel.focus();
 
@@ -27,24 +117,10 @@ function editStatusCell(td, dateTd, proj, proc) {
   activeInlineEdit = { cancel };
 
   sel.addEventListener('change', async () => {
-    const newStatus = sel.value;
     activeInlineEdit = null;
-    td.innerHTML = '';
-    const newSpan = document.createElement('span');
-    newSpan.className = 'status-label';
-    applyStatusStyle(dateTd, td, newSpan, newStatus);
-    td.appendChild(newSpan);
-    const curRec = statusMap[key] || {};
-    await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-      status: newStatus, start_date: curRec.start_date || null,
-      end_date: curRec.end_date || null, tantousha: curRec.tantousha || null,
-      memo: curRec.memo || null,
-    });
-    const isEmpty = !newStatus && !curRec.start_date && !curRec.end_date && !curRec.tantousha && !curRec.memo;
-    if (isEmpty) delete statusMap[key];
-    else statusMap[key] = { ...curRec, status: newStatus };
+    sel.disabled = true;
+    if (await onPick(sel.value)) rerenderViews();
   });
-
   sel.addEventListener('blur', () => {
     setTimeout(() => {
       if (activeInlineEdit && activeInlineEdit.cancel === cancel) {
@@ -54,55 +130,16 @@ function editStatusCell(td, dateTd, proj, proc) {
   });
 }
 
+function editStatusCell(td, proj, proc) {
+  editSelectCell(td,
+    sel => { fillStatusOptions(sel); sel.value = getProcData(proj, proc).inputStatus; },
+    v => saveProc(proj, proc, { status: v }));
+}
+
 function editOwnerCell(td, proj, proc) {
-  closeActiveInlineEdit();
-  const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-  const rec = statusMap[key] || {};
-  const origHTML = td.innerHTML;
-
-  td.innerHTML = '';
-  const sel = document.createElement('select');
-  sel.className = 'inline-select';
-  const emptyO = document.createElement('option');
-  emptyO.value = ''; emptyO.textContent = '─';
-  sel.appendChild(emptyO);
-  (PROCESS_OWNERS[proc.no] || []).forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-  sel.value = rec.tantousha || '';
-  td.appendChild(sel);
-  sel.focus();
-
-  const cancel = () => { td.innerHTML = origHTML; };
-  activeInlineEdit = { cancel };
-
-  sel.addEventListener('change', async () => {
-    const newOwner = sel.value;
-    activeInlineEdit = null;
-    td.innerHTML = '';
-    const newSpan = document.createElement('span');
-    newSpan.textContent = newOwner;
-    td.appendChild(newSpan);
-    const curRec = statusMap[key] || {};
-    await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-      status: curRec.status || null, start_date: curRec.start_date || null,
-      end_date: curRec.end_date || null, tantousha: newOwner || null,
-      memo: curRec.memo || null,
-    });
-    const isEmpty = !curRec.status && !curRec.start_date && !curRec.end_date && !newOwner && !curRec.memo;
-    if (isEmpty) delete statusMap[key];
-    else statusMap[key] = { ...curRec, tantousha: newOwner };
-  });
-
-  sel.addEventListener('blur', () => {
-    setTimeout(() => {
-      if (activeInlineEdit && activeInlineEdit.cancel === cancel) {
-        cancel(); activeInlineEdit = null;
-      }
-    }, 100);
-  });
+  editSelectCell(td,
+    sel => fillOwnerOptions(sel, proc.no, getProcData(proj, proc).owner),
+    v => saveProc(proj, proc, { owner: v }));
 }
 
 function toDBDate(d) {
@@ -142,229 +179,20 @@ function ensureDatePicker() {
   });
 }
 
+// 開始日・終了日をカレンダーで選んで保存する（表・詳細表示共通）
 function editDateCell(td, proj, proc) {
+  if (!canEdit) return;
   closeActiveInlineEdit();
   ensureDatePicker();
 
-  const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-  const rec = statusMap[key] || {};
-
+  const cur = getProcData(proj, proc);
   const rect = td.getBoundingClientRect();
   const label = document.getElementById('fp-range-label');
   const anchor = document.getElementById('fp-anchor');
   anchor.style.top  = `${rect.top}px`;
   anchor.style.left = `${rect.right}px`;
 
-  const posLabel = () => {
-    const cal = document.querySelector('.flatpickr-calendar.open');
-    if (cal) {
-      const cr = cal.getBoundingClientRect();
-      label.style.top  = `${cr.top - 22}px`;
-      label.style.left = `${cr.left}px`;
-      label.style.width = `${cr.width}px`;
-    }
-  };
-  requestAnimationFrame(posLabel);
-
-  datePickerSave = async (newStart, newEnd) => {
-    td.innerHTML = '';
-    const newSpan = document.createElement('span');
-    newSpan.textContent = fmtDate(newStart);
-    td.appendChild(newSpan);
-    const curRec = statusMap[key] || {};
-    await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-      status: curRec.status || null, start_date: newStart,
-      end_date: newEnd, tantousha: curRec.tantousha || null,
-      memo: curRec.memo || null,
-    });
-    const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha && !curRec.memo;
-    if (isEmpty) delete statusMap[key];
-    else statusMap[key] = { ...curRec, start_date: newStart, end_date: newEnd };
-  };
-
-  const defaultDates = [rec.start_date, rec.end_date].filter(Boolean);
-  datePicker.setDate(defaultDates, false);
-  const initLabel = defaultDates.length === 2
-    ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
-    : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
-  label.textContent = initLabel;
-
-  datePicker.open();
-  activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
-}
-
-async function saveRecord(projNum, machine, procNo, { status, start_date, end_date, tantousha, memo = null }) {
-  const pn = String(projNum);
-  const mc = machine || '';
-  const isEmpty = !status && !start_date && !end_date && !tantousha && !memo;
-  try {
-    if (isEmpty) {
-      await sb.from('denki_process_status').delete()
-        .eq('project_number', pn).eq('machine', mc).eq('process_no', procNo);
-    } else {
-      await sb.from('denki_process_status').upsert(
-        { project_number: pn, machine: mc, process_no: procNo,
-          status: status || null, start_date, end_date, tantousha, memo: memo || null },
-        { onConflict: 'project_number,machine,process_no' }
-      );
-    }
-  } catch(e) { console.warn('保存エラー:', e); }
-}
-
-async function saveLinkedRecord(taskId, { start_date, end_date, owner, status }) {
-  if (!taskId) return;
-  try {
-    await sb.from('tasks').update({
-      start_date: start_date || null,
-      end_date:   end_date   || null,
-      owner:      owner      || null,
-      is_completed: status === '完了',
-    }).eq('id', taskId);
-  } catch(e) { console.warn('連携保存エラー:', e); }
-}
-
-function editLinkedStatusCell(td, dateTd, proj, proc) {
-  closeActiveInlineEdit();
-  const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-  const linkedData = currentLinkedMap[lk] || {};
-  const origHTML = td.innerHTML;
-
-  td.innerHTML = '';
-  const sel = document.createElement('select');
-  sel.className = 'inline-select';
-  [['', '─'], ['作業中', '作業中'], ['完了', '完了'], ['対象外', '対象外']].forEach(([v, t]) => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = t;
-    sel.appendChild(o);
-  });
-  sel.value = linkedData.status || '';
-  td.appendChild(sel);
-  sel.focus();
-
-  const cancel = () => { td.innerHTML = origHTML; };
-  activeInlineEdit = { cancel };
-
-  sel.addEventListener('change', async () => {
-    const newStatus = sel.value;
-    activeInlineEdit = null;
-    td.innerHTML = '';
-    const newSpan = document.createElement('span');
-    newSpan.className = 'status-label';
-    applyStatusStyle(dateTd, td, newSpan, newStatus);
-    td.appendChild(newSpan);
-    const cur = currentLinkedMap[lk] || {};
-    await saveLinkedRecord(cur.id, { start_date: cur.start_date, end_date: cur.end_date, owner: cur.owner, status: newStatus });
-    currentLinkedMap[lk] = { ...cur, status: newStatus };
-  });
-
-  sel.addEventListener('blur', () => {
-    setTimeout(() => {
-      if (activeInlineEdit && activeInlineEdit.cancel === cancel) {
-        cancel(); activeInlineEdit = null;
-      }
-    }, 100);
-  });
-}
-
-function editLinkedOwnerCell(td, proj, proc) {
-  closeActiveInlineEdit();
-  const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-  const linkedData = currentLinkedMap[lk] || {};
-  const origHTML = td.innerHTML;
-
-  td.innerHTML = '';
-  const sel = document.createElement('select');
-  sel.className = 'inline-select';
-  const emptyO = document.createElement('option');
-  emptyO.value = ''; emptyO.textContent = '─';
-  sel.appendChild(emptyO);
-  (PROCESS_OWNERS[proc.no] || []).forEach(name => {
-    const o = document.createElement('option');
-    o.value = name; o.textContent = name;
-    sel.appendChild(o);
-  });
-  sel.value = linkedData.owner || '';
-  td.appendChild(sel);
-  sel.focus();
-
-  const cancel = () => { td.innerHTML = origHTML; };
-  activeInlineEdit = { cancel };
-
-  sel.addEventListener('change', async () => {
-    const newOwner = sel.value;
-    activeInlineEdit = null;
-    td.innerHTML = '';
-    const newSpan = document.createElement('span');
-    newSpan.textContent = newOwner;
-    td.appendChild(newSpan);
-    const cur = currentLinkedMap[lk] || {};
-    await saveLinkedRecord(cur.id, { start_date: cur.start_date, end_date: cur.end_date, owner: newOwner, status: cur.status });
-    currentLinkedMap[lk] = { ...cur, owner: newOwner };
-  });
-
-  sel.addEventListener('blur', () => {
-    setTimeout(() => {
-      if (activeInlineEdit && activeInlineEdit.cancel === cancel) {
-        cancel(); activeInlineEdit = null;
-      }
-    }, 100);
-  });
-}
-
-function editLinkedDateCell(td, proj, proc) {
-  closeActiveInlineEdit();
-  ensureDatePicker();
-  const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-  const linkedData = currentLinkedMap[lk] || {};
-
-  const rect = td.getBoundingClientRect();
-  const label = document.getElementById('fp-range-label');
-  const anchor = document.getElementById('fp-anchor');
-  anchor.style.top  = `${rect.top}px`;
-  anchor.style.left = `${rect.right}px`;
-
-  const posLabel = () => {
-    const cal = document.querySelector('.flatpickr-calendar.open');
-    if (cal) {
-      const cr = cal.getBoundingClientRect();
-      label.style.top  = `${cr.top - 22}px`;
-      label.style.left = `${cr.left}px`;
-      label.style.width = `${cr.width}px`;
-    }
-  };
-  requestAnimationFrame(posLabel);
-
-  datePickerSave = async (newStart, newEnd) => {
-    td.textContent = fmtDate(newStart);
-    const cur = currentLinkedMap[lk] || {};
-    await saveLinkedRecord(cur.id, { start_date: newStart, end_date: newEnd, owner: cur.owner, status: cur.status });
-    currentLinkedMap[lk] = { ...cur, start_date: newStart, end_date: newEnd };
-  };
-
-  const defaultDates = [linkedData.start_date, linkedData.end_date].filter(Boolean);
-  datePicker.setDate(defaultDates, false);
-  const initLabel = defaultDates.length === 2
-    ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
-    : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
-  label.textContent = initLabel;
-
-  datePicker.open();
-  activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
-}
-
-function editLinkedDetailDateCell(tdStart, tdEnd, proj, proc) {
-  closeActiveInlineEdit();
-  ensureDatePicker();
-  const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-  const linkedData = currentLinkedMap[lk] || {};
-
-  const rect = tdStart.getBoundingClientRect();
-  const label  = document.getElementById('fp-range-label');
-  const anchor = document.getElementById('fp-anchor');
-  anchor.style.top  = `${rect.top}px`;
-  anchor.style.left = `${rect.right}px`;
-
-  const posLabel = () => {
+  requestAnimationFrame(() => {
     const cal = document.querySelector('.flatpickr-calendar.open');
     if (cal) {
       const cr = cal.getBoundingClientRect();
@@ -372,71 +200,17 @@ function editLinkedDetailDateCell(tdStart, tdEnd, proj, proc) {
       label.style.left  = `${cr.left}px`;
       label.style.width = `${cr.width}px`;
     }
-  };
-  requestAnimationFrame(posLabel);
+  });
 
   datePickerSave = async (newStart, newEnd) => {
-    tdStart.textContent = fmtDate(newStart);
-    tdEnd.textContent   = fmtDate(newEnd);
-    const cur = currentLinkedMap[lk] || {};
-    await saveLinkedRecord(cur.id, { start_date: newStart, end_date: newEnd, owner: cur.owner, status: cur.status });
-    currentLinkedMap[lk] = { ...cur, start_date: newStart, end_date: newEnd };
+    if (await saveProc(proj, proc, { start_date: newStart, end_date: newEnd })) rerenderViews();
   };
 
-  const defaultDates = [linkedData.start_date, linkedData.end_date].filter(Boolean);
+  const defaultDates = [cur.start_date, cur.end_date].filter(Boolean);
   datePicker.setDate(defaultDates, false);
-  const initLabel = defaultDates.length === 2
+  label.textContent = defaultDates.length === 2
     ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
     : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
-  label.textContent = initLabel;
-
-  datePicker.open();
-  activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };
-}
-
-function editDetailDateCell(tdStart, tdEnd, proj, proc) {
-  closeActiveInlineEdit();
-  ensureDatePicker();
-
-  const key  = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-  const rec  = statusMap[key] || {};
-  const rect = tdStart.getBoundingClientRect();
-  const label  = document.getElementById('fp-range-label');
-  const anchor = document.getElementById('fp-anchor');
-  anchor.style.top  = `${rect.top}px`;
-  anchor.style.left = `${rect.right}px`;
-
-  const posLabel = () => {
-    const cal = document.querySelector('.flatpickr-calendar.open');
-    if (cal) {
-      const cr = cal.getBoundingClientRect();
-      label.style.top   = `${cr.top - 22}px`;
-      label.style.left  = `${cr.left}px`;
-      label.style.width = `${cr.width}px`;
-    }
-  };
-  requestAnimationFrame(posLabel);
-
-  datePickerSave = async (newStart, newEnd) => {
-    tdStart.textContent = fmtDate(newStart);
-    tdEnd.textContent   = fmtDate(newEnd);
-    const curRec = statusMap[key] || {};
-    await saveRecord(proj.project_number, proj.machine || '', proc.no, {
-      status: curRec.status || null, start_date: newStart,
-      end_date: newEnd, tantousha: curRec.tantousha || null,
-      memo: curRec.memo || null,
-    });
-    const isEmpty = !curRec.status && !newStart && !newEnd && !curRec.tantousha && !curRec.memo;
-    if (isEmpty) delete statusMap[key];
-    else statusMap[key] = { ...curRec, start_date: newStart, end_date: newEnd };
-  };
-
-  const defaultDates = [rec.start_date, rec.end_date].filter(Boolean);
-  datePicker.setDate(defaultDates, false);
-  const initLabel = defaultDates.length === 2
-    ? `開始日: ${defaultDates[0]}　終了日: ${defaultDates[1]}`
-    : defaultDates.length === 1 ? `開始日: ${defaultDates[0]}　終了日: 未設定` : '開始日と終了日を選択してください';
-  label.textContent = initLabel;
 
   datePicker.open();
   activeInlineEdit = { cancel: () => { datePickerSave = null; datePicker.close(); } };

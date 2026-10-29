@@ -54,15 +54,9 @@ function initGantt() {
   gantt.attachEvent('onTaskDblClick', (id) => {
     const task = gantt.getTask(id);
     if (!task || task.type === gantt.config.types.project) return false;
-    openPopup({
-      projNum:  task.projNum,
-      machine:  task.machine,
-      procNo:   task.procNo,
-      procName: task.procName,
-      source:   'gantt',
-      ganttId:  id,
-      dateTd: null, statusTd: null, statusSpan: null, ownerSpan: null, dateRangeSpan: null,
-    });
+    const proj = currentProjects.find(p => String(p.project_number) === String(task.projNum) && p.machine === task.machine);
+    const proc = PROCESSES.find(p => p.no === task.procNo);
+    if (proj && proc) openPopup(proj, proc, id);
     return false;
   });
 
@@ -83,6 +77,30 @@ function updateTodayMarker() {
   });
 }
 
+function ganttDuration(startDate, endDate) {
+  return endDate
+    ? Math.max(1, Math.round((parseLocalDate(endDate) - parseLocalDate(startDate)) / 86400000) + 1)
+    : 1;
+}
+
+function ganttChild(parentId, proj, proc, d) {
+  return {
+    id:          `${parentId}__${proc.no}`,
+    text:        `${proc.no}. ${proc.name}`,
+    start_date:  d.start_date,
+    duration:    ganttDuration(d.start_date, d.end_date),
+    parent:      parentId,
+    owner:       d.owner || '',
+    statusLabel: d.status || '',
+    deptClass:   PROCESS_DEPT[proc.no] || 'other',
+    start_date_str: d.start_date,
+    end_date_str:   d.end_date || null,
+    projNum:  proj.project_number,
+    machine:  proj.machine,
+    procNo:   proc.no,
+  };
+}
+
 function buildGanttData() {
   const tasks = [];
 
@@ -91,41 +109,9 @@ function buildGanttData() {
     const children = [];
 
     PROCESSES.forEach(proc => {
-      const key = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-      const rec = statusMap[key] || {};
-
-      let startDate = rec.start_date;
-      let endDate   = rec.end_date;
-
-      if (proc.linked) {
-        const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        if (!startDate) startDate = currentLinkedMap[lk]?.start_date;
-        if (!endDate)   endDate   = currentLinkedMap[lk]?.end_date;
-      }
-
-      if (!startDate) return;
-
-      const duration = endDate
-        ? Math.max(1, Math.round((parseLocalDate(endDate) - parseLocalDate(startDate)) / 86400000) + 1)
-        : 1;
-
-      children.push({
-        id:          `${parentId}__${proc.no}`,
-        text:        `${proc.no}. ${proc.name}`,
-        start_date:  startDate,
-        duration,
-        parent:      parentId,
-        owner:       rec.tantousha || '',
-        statusClass: getStatusClass(rec.status),
-        statusLabel: rec.status || '',
-        deptClass:   PROCESS_DEPT[proc.no] || 'other',
-        start_date_str: startDate,
-        end_date_str:   endDate || null,
-        projNum:  proj.project_number,
-        machine:  proj.machine || '',
-        procNo:   proc.no,
-        procName: proc.name,
-      });
+      const d = getProcData(proj, proc);
+      if (!d.start_date) return;
+      children.push(ganttChild(parentId, proj, proc, d));
     });
 
     if (children.length === 0) return;

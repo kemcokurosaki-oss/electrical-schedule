@@ -1,5 +1,5 @@
 // ─── 表レンダリング ───────────────────────────────────
-function renderTable(projects, linkedMap) {
+function renderTable(projects) {
   const thead = document.getElementById('thead');
   const tbody = document.getElementById('tbody');
 
@@ -86,111 +86,58 @@ function renderTable(projects, linkedMap) {
 
   PROCESSES.forEach(proc => {
     const deptClass = PROCESS_DEPT[proc.no] ? ` dept-${PROCESS_DEPT[proc.no]}` : '';
-    // 日付行
-    const trDate = document.createElement('tr');
-    trDate.className = `row-date${deptClass}`;
-    const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = proc.no;
-    const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = proc.name;
-    if (proc.linked) tdItem.title = '全体工程表と連携';
-    trDate.appendChild(tdNo);
-    trDate.appendChild(tdItem);
+    const trDate   = document.createElement('tr'); trDate.className   = `row-date${deptClass}`;
+    const trStatus = document.createElement('tr'); trStatus.className = `row-status${deptClass}`;
+    const trOwner  = document.createElement('tr'); trOwner.className  = `row-owner${deptClass}`;
 
-    const dateTds = [];
-    const dateRangeSpans = [];
+    const addHead = (tr, noText, itemText) => {
+      const tdNo = document.createElement('td'); tdNo.className = 'col-no'; tdNo.textContent = noText;
+      const tdItem = document.createElement('td'); tdItem.className = 'col-item'; tdItem.textContent = itemText;
+      tr.appendChild(tdNo); tr.appendChild(tdItem);
+      return tdItem;
+    };
+    const tdItem = addHead(trDate, proc.no, proc.name);
+    if (proc.linked) tdItem.title = `全体工程表と連携（${proc.taskTexts[0]}）`;
+    addHead(trStatus, '', PROCESS_FLOW[proc.no] || '');
+    addHead(trOwner, '', '');
 
     projects.forEach((proj, pi) => {
-      const td = document.createElement('td');
-      td.className = 'cell-date' + (proc.linked ? ' linked' : '') + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
-      if (proc.linked) {
-        const key = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        td.textContent = fmtDate(linkedMap[key]?.start_date);
-        dateRangeSpans.push(null);
-      } else {
-        const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-        const rec = statusMap[statusKey] || {};
-        const span = document.createElement('span');
-        span.textContent = fmtDate(rec.start_date);
-        td.appendChild(span);
-        dateRangeSpans.push(span);
-      }
-      dateTds.push(td);
-      trDate.appendChild(td);
+      const d = getProcData(proj, proc);
+      const end = groupEndIdx.has(pi) ? ' proj-group-end' : '';
+      const linkedCls = d.linked ? ' linked' : '';
+      const linkedTitle = d.linked ? '全体工程表と連携しています' : '';
+
+      const dateTd = document.createElement('td');
+      dateTd.className = 'cell-date' + linkedCls + end;
+      dateTd.textContent = fmtDate(d.start_date);
+      dateTd.title = [fmtDateRange(d.start_date, d.end_date), linkedTitle].filter(Boolean).join('\n');
+
+      const statusTd = document.createElement('td');
+      statusTd.className = 'cell-status' + end;
+      const statusSpan = document.createElement('span');
+      applyStatusStyle(dateTd, statusTd, statusSpan, d.status);
+      statusTd.appendChild(statusSpan);
+
+      const ownerTd = document.createElement('td');
+      ownerTd.className = 'cell-owner' + linkedCls + end;
+      const ownerSpan = document.createElement('span');
+      ownerSpan.textContent = d.owner || '';
+      ownerTd.appendChild(ownerSpan);
+
+      dateTd.addEventListener('dblclick',   () => editDateCell(dateTd, proj, proc));
+      statusTd.addEventListener('dblclick', () => editStatusCell(statusTd, proj, proc));
+      ownerTd.addEventListener('dblclick',  () => editOwnerCell(ownerTd, proj, proc));
+
+      trDate.appendChild(dateTd);
+      trStatus.appendChild(statusTd);
+      trOwner.appendChild(ownerTd);
     });
     tbody.appendChild(trDate);
-
-    // 担当者行
-    const trOwner = document.createElement('tr');
-    trOwner.className = `row-owner${deptClass}`;
-    const tdNoO = document.createElement('td'); tdNoO.className = 'col-no';
-    const tdItemO = document.createElement('td'); tdItemO.className = 'col-item';
-    trOwner.appendChild(tdNoO);
-    trOwner.appendChild(tdItemO);
-
-    const ownerSpans = [];
-    projects.forEach((proj, pi) => {
-      const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-      const rec = statusMap[statusKey] || {};
-      const td = document.createElement('td');
-      td.className = 'cell-owner' + (proc.linked ? ' linked' : '') + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
-      const span = document.createElement('span');
-      let displayOwner;
-      if (proc.linked) {
-        const linkedKey = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        displayOwner = linkedMap[linkedKey]?.owner || '';
-      } else {
-        displayOwner = rec.tantousha || '';
-      }
-      span.textContent = displayOwner;
-      td.appendChild(span);
-      ownerSpans.push(span);
-      trOwner.appendChild(td);
-    });
-
-    // ステータス行
-    const trStatus = document.createElement('tr');
-    trStatus.className = `row-status${deptClass}`;
-    const tdNoS = document.createElement('td'); tdNoS.className = 'col-no';
-    const tdItemS = document.createElement('td'); tdItemS.className = 'col-item'; tdItemS.textContent = PROCESS_FLOW[proc.no] || '';
-    trStatus.appendChild(tdNoS);
-    trStatus.appendChild(tdItemS);
-
-    projects.forEach((proj, pi) => {
-      const statusKey = `${proj.project_number}__${proj.machine || ''}__${proc.no}`;
-      const rec = statusMap[statusKey] || {};
-      const dateTd = dateTds[pi];
-
-      const td = document.createElement('td');
-      td.className = 'cell-status' + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
-
-      const statusSpan = document.createElement('span');
-      statusSpan.className = 'status-label';
-      if (proc.linked) {
-        const lk = `${proj.project_number}__${proj.machine}__${proc.taskText}`;
-        applyStatusStyle(dateTd, td, statusSpan, calcLinkedStatus(currentLinkedMap[lk]?.start_date, currentLinkedMap[lk]?.end_date, currentLinkedMap[lk]?.status));
-      } else {
-        applyStatusStyle(dateTd, td, statusSpan, rec.status || '');
-      }
-      td.appendChild(statusSpan);
-
-      if (!proc.linked) {
-        td.addEventListener('dblclick', () => editStatusCell(td, dateTd, proj, proc));
-        dateTd.addEventListener('dblclick', () => editDateCell(dateTd, proj, proc));
-        const ownerTd = trOwner.children[pi + 2];
-        ownerTd.addEventListener('dblclick', () => editOwnerCell(ownerTd, proj, proc));
-      } else {
-        td.addEventListener('dblclick', () => editLinkedStatusCell(td, dateTd, proj, proc));
-        dateTd.addEventListener('dblclick', () => editLinkedDateCell(dateTd, proj, proc));
-        const ownerTd = trOwner.children[pi + 2];
-        ownerTd.addEventListener('dblclick', () => editLinkedOwnerCell(ownerTd, proj, proc));
-      }
-
-      trStatus.appendChild(td);
-    });
     tbody.appendChild(trStatus);
     tbody.appendChild(trOwner);
   });
 
-  // 出荷日行
+  // 出荷日行（全体工程表の工場出荷）
   const trShip = document.createElement('tr');
   trShip.className = 'row-shipping';
   const tdNoShip = document.createElement('td'); tdNoShip.className = 'col-no'; tdNoShip.textContent = '23';
@@ -200,8 +147,15 @@ function renderTable(projects, linkedMap) {
   projects.forEach((proj, pi) => {
     const td = document.createElement('td');
     td.className = 'cell-date linked' + (groupEndIdx.has(pi) ? ' proj-group-end' : '');
-    td.textContent = fmtDate(proj.start_date);
+    fillShipCell(td, proj);
     trShip.appendChild(td);
   });
   tbody.appendChild(trShip);
+}
+
+// 工場出荷日。同じ機種に工場出荷が複数あるときは一番早い日を出し、全部の日付をツールチップに出す
+function fillShipCell(td, proj) {
+  const dates = shipMap[`${proj.project_number}__${proj.machine}`] || [];
+  td.textContent = fmtDate(dates[0]) + (dates.length > 1 ? ' 他' : '');
+  if (dates.length > 1) td.title = dates.map(fmtDate).join('\n');
 }

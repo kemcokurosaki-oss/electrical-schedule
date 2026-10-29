@@ -1,8 +1,10 @@
 const S_URL = "https://dgekjzkrybrswsxlcbvh.supabase.co";
 const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRnZWtqemtyeWJyc3dzeGxjYnZoIiwicm9sZSI6ImFub24iLCJpYXQiOjE3Njg4ODQ3MjIsImV4cCI6MjA4NDQ2MDcyMn0.BsEj53lV3p76yE9fMPTaLn7ocKTNzYPTqIAnBafYItU";
 const sb = supabase.createClient(S_URL, S_KEY);
+// 編集できる人（DB の is_core_admin と同じ）。それ以外の人は閲覧のみ
+const EDITORS = ['e-kurosaki@kusakabe.com', 's-morimura@kusakabe.com', 'm2-kusakabe@kusakabe.com']; // 黒崎・森村・常務
 M365Login.init(sb, { appName: '電気工程表', mountAfter: '#btn-manage',
-  canEdit: (email) => ['e-kurosaki@kusakabe.com', 's-morimura@kusakabe.com', 'm2-kusakabe@kusakabe.com'].includes(email.toLowerCase()) }); // 編集は黒崎・森村・常務（DB の is_core_admin と同じ）
+  canEdit: (email) => EDITORS.includes(email.toLowerCase()) });
 
 // ─── 工程定義 ───────────────────────────────────────────
 const PROCESSES = [
@@ -18,17 +20,22 @@ const PROCESSES = [
   { no: 10, name: '機器リスト確認',                               linked: false },
   { no: 11, name: '操作盤外形図出図',                             linked: false },
   { no: 12, name: '操作盤外形図確認',                             linked: false },
-  { no: 13, name: '電気図面出図',                                 linked: true,  taskText: '電気図面出図' },
-  { no: 14, name: '部品手配',                                     linked: true,  taskText: '部品手配' },
+  { no: 13, name: '電気図面出図',                                 linked: true,  taskTexts: ['電気図面客先提出', '電気図面客先提出（制御盤）', '電気図面客先提出（操作盤）'] },
+  { no: 14, name: '部品手配',                                     linked: true,  taskTexts: ['電気品手配'] },
   { no: 15, name: '確認用電気図出図（事前見積り用）',             linked: false },
   { no: 16, name: '確認用電気図確認',                             linked: false },
-  { no: 17, name: '最終電気図出図',                               linked: true,  taskText: '最終電気図面' },
+  { no: 17, name: '最終電気図出図',                               linked: true,  taskTexts: ['最終電気図面'] },
   { no: 18, name: '部品（板金含む）入荷',                         linked: false },
-  { no: 19, name: '電気艤装開始日',                               linked: true,  taskText: '電気艤装' },
-  { no: 20, name: '盤組開始日',                                   linked: true,  taskText: '盤組立' },
+  { no: 19, name: '電気艤装開始日',                               linked: true,  taskTexts: ['電気艤装'] },
+  { no: 20, name: '盤組開始日',                                   linked: true,  taskTexts: ['盤組立'] },
   { no: 21, name: '盤立ち上げ',                                   linked: false },
-  { no: 22, name: '試運転開始日',                                 linked: true,  taskText: '試運転' },
+  { no: 22, name: '試運転開始日',                                 linked: true,  taskTexts: ['試運転'] },
 ];
+// linked: 全体工程表の tasks と連携する工程。taskTexts は全体工程表のタスク名（先に書いたものを優先）。
+//         その機種に該当タスクが無いときは、連携しない工程と同じく電気工程表だけに保存する
+
+// ─── ステータス ─────────────────────────────────────────
+const STATUS_LIST = ['作業中', '確認依頼中', '手配中', '完了', '対象外', '未'];
 
 // ─── 担当者マスター ─────────────────────────────────────
 const DEPT_OWNERS = {

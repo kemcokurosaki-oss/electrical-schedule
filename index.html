@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ja.js" integrity="sha384-mKor8U8jwukUkfxaFPCsxKF9S62PXq4gG7zcZ5yQ2x3KL1msprJZeFlKFEDeeb5V" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css?v=20261029">
 </head>
 <body>
 
@@ -38,12 +38,7 @@
     <div class="popup-body">
       <div class="popup-field">
         <label>ステータス</label>
-        <select id="popup-status">
-          <option value="">─</option>
-          <option value="作業中">作業中</option>
-          <option value="完了">完了</option>
-          <option value="対象外">対象外</option>
-        </select>
+        <select id="popup-status"></select>
       </div>
       <div class="popup-field">
         <label>開始日</label>
@@ -74,6 +69,13 @@
     </div>
     <div class="manage-body">
       <div class="manage-status-bar" id="manage-status"></div>
+      <div class="manage-note">電気の作業がある機種だけを列として追加してください。全体工程表に無い機種名（例: FSBT1）は下の欄から追加できます。</div>
+      <div class="manage-add-row">
+        <input type="text" id="manage-add-pn" placeholder="工番">
+        <input type="text" id="manage-add-machine" placeholder="機種（空欄可）">
+        <button id="manage-add-btn">列を追加</button>
+      </div>
+      <input type="search" id="manage-search" placeholder="工番・客先で絞り込み">
       <div class="manage-list" id="manage-list"></div>
     </div>
   </div>
@@ -83,7 +85,7 @@
 <div id="view-table">
   <div id="table-gap"></div>
   <div id="table-wrapper">
-    <div id="no-data" style="display:none">工番が登録されていません。ヘッダーの「工番管理」から追加してください。</div>
+    <div id="no-data" style="display:none">表示する列がありません。ヘッダーの「工番管理」から工番と機種を追加してください。</div>
     <table id="main-table" style="display:none">
       <thead id="thead"></thead>
       <tbody id="tbody"></tbody>
@@ -120,14 +122,14 @@
   <div id="gantt-container"></div>
 </div>
 
-<script src="config.js"></script>
-<script src="state.js"></script>
-<script src="utils.js"></script>
-<script src="table.js"></script>
-<script src="detail.js"></script>
-<script src="edit.js"></script>
-<script src="gantt.js"></script>
-<script src="manage.js"></script>
-<script src="app.js"></script>
+<script src="config.js?v=20261029"></script>
+<script src="state.js?v=20261029"></script>
+<script src="utils.js?v=20261029"></script>
+<script src="table.js?v=20261029"></script>
+<script src="detail.js?v=20261029"></script>
+<script src="edit.js?v=20261029"></script>
+<script src="gantt.js?v=20261029"></script>
+<script src="manage.js?v=20261029"></script>
+<script src="app.js?v=20261029"></script>
 </body>
 </html>

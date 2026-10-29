@@ -158,10 +158,20 @@ tr.row-shipping td.cell-date { color: #b45309; font-size: 13px; }
 .status-label.lbl-wip  { background: #b7eb8f; color: #333; }
 .status-label.lbl-done { background: #e2e8f0; color: #888; }
 .status-label.lbl-na   { color: #888; }
+.status-label.lbl-wait { background: #ffe7ba; color: #333; }
+.status-label.lbl-yet  { background: #ffccc7; color: #333; }
 
 tr.row-status td.proc-wip  { background: #b7eb8f !important; }
 td.cell-date.proc-done     { background: #e8e8e8 !important; color: #bbb; }
 tr.row-status td.proc-done { background: #e8e8e8 !important; }
+tr.row-status td.proc-wait { background: #ffe7ba !important; }
+tr.row-status td.proc-yet  { background: #ffccc7 !important; }
+
+/* 全体工程表と連携しているセル（日付・担当者は全体工程表の値） */
+td.cell-date.linked, td.cell-owner.linked, .detail-table td.linked { color: #1d4ed8; }
+
+/* 閲覧のみの人 */
+body.read-only td.cell-date, body.read-only td.cell-owner, body.read-only td.cell-status { cursor: default; }
 
 td.cell-date.proc-na { position: relative; overflow: hidden; }
 td.cell-date.proc-na::after {
@@ -366,7 +376,7 @@ tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #EBD9F5 !impo
 .manage-box {
   background: white;
   border-radius: 8px;
-  width: 500px;
+  width: 640px;
   max-height: 80vh;
   box-shadow: 0 8px 32px rgba(0,0,0,0.25);
   display: flex;
@@ -411,8 +421,8 @@ tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #EBD9F5 !impo
 .manage-list { display: flex; flex-direction: column; gap: 6px; }
 .manage-item {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 8px 12px;
   border: 1px solid #e2e8f0;
   border-radius: 5px;
@@ -422,24 +432,35 @@ tr.dept-denso  td.col-no, tr.dept-denso  td.col-item { background: #EBD9F5 !impo
   background: #ebf8ff;
   border-color: #bee3f8;
 }
-.manage-item-info { display: flex; flex-direction: column; gap: 2px; }
+.manage-item-head { display: flex; align-items: baseline; gap: 10px; }
 .manage-item-num { font-weight: bold; font-size: 13px; }
 .manage-item-detail { font-size: 11px; color: #666; }
-.manage-item-btn {
-  padding: 4px 12px;
-  border-radius: 3px;
-  border: none;
-  cursor: pointer;
-  font-size: 11px;
+.manage-note { font-size: 11px; color: #555; }
+.manage-add-row { display: flex; gap: 6px; }
+.manage-add-row input, #manage-search {
+  padding: 4px 8px; font-size: 12px; border: 1px solid #cbd5e0; border-radius: 3px;
   font-family: 'Meiryo', 'メイリオ', sans-serif;
-  white-space: nowrap;
-  flex-shrink: 0;
 }
-.manage-item-btn:disabled { opacity: 0.5; cursor: default; }
-.btn-add-proj  { background: #1a3a5c; color: white; }
-.btn-add-proj:hover:not(:disabled)  { background: #2c5282; }
-.btn-rm-proj   { background: #e2e8f0; color: #444; }
-.btn-rm-proj:hover:not(:disabled)   { background: #cbd5e0; }
+.manage-add-row input { width: 110px; }
+.manage-add-row button, .manage-open-btn, .manage-add-chip {
+  padding: 3px 10px; border-radius: 3px; border: none; cursor: pointer; font-size: 11px;
+  font-family: 'Meiryo', 'メイリオ', sans-serif;
+}
+.manage-add-row button { background: #1a3a5c; color: white; }
+.manage-chips { display: flex; flex-wrap: wrap; gap: 4px; }
+.manage-chip {
+  display: inline-flex; align-items: center; gap: 2px;
+  background: #1a3a5c; color: white; border-radius: 3px; padding: 2px 4px; font-size: 12px;
+}
+.manage-chip-name { padding: 0 4px; font-weight: bold; }
+.manage-chip button {
+  background: none; border: none; color: white; cursor: pointer; font-size: 10px; padding: 0 3px;
+}
+.manage-chip button:disabled { opacity: 0.3; cursor: default; }
+.manage-chip select { font-size: 11px; max-width: 110px; }
+.manage-add-chip { background: #e2e8f0; color: #333; }
+.manage-add-chip:hover { background: #cbd5e0; }
+.manage-open-btn { background: none; color: #2d6a9f; padding: 0; text-decoration: underline; }
 
 /* ─── flatpickr カスタム ─────────────────────────── */
 .flatpickr-calendar {
@@ -652,6 +673,8 @@ table.detail-table {
 .detail-table td.detail-date.proc-done   { background: #e8e8e8 !important; color: #bbb; }
 .detail-table td.detail-status.proc-done { background: #e8e8e8 !important; }
 .detail-table td.detail-status.proc-wip  { background: #b7eb8f !important; }
+.detail-table td.detail-status.proc-wait { background: #ffe7ba !important; }
+.detail-table td.detail-status.proc-yet  { background: #ffccc7 !important; }
 .detail-table td.detail-date.proc-na { position: relative; overflow: hidden; }
 .detail-table td.detail-date.proc-na::after {
   content: '';

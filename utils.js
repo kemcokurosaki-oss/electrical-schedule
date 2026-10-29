@@ -18,7 +18,7 @@ function fmtDateRange(start, end) {
 }
 
 function getStatusClass(status) {
-  return { '作業中': 'wip', '完了': 'done', '対象外': 'na' }[status] || 'pending';
+  return { '作業中': 'wip', '確認依頼中': 'wait', '手配中': 'wait', '完了': 'done', '対象外': 'na', '未': 'yet' }[status] || 'pending';
 }
 
 function parseLocalDate(str) {
@@ -27,36 +27,58 @@ function parseLocalDate(str) {
   return new Date(y, m - 1, d);
 }
 
-function calcLinkedStatus(startDate, endDate, taskStatus) {
-  if (taskStatus === '完了') return '完了';
-  if (!startDate) return '';
-  const today = new Date(); today.setHours(0, 0, 0, 0);
+// 連携工程でステータス未入力のとき: 開始日を過ぎていれば作業中
+function autoStatus(startDate) {
   const start = parseLocalDate(startDate);
-  if (!start || today < start) return '';
-  return '作業中';
+  if (!start) return '';
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  return today < start ? '' : '作業中';
+}
+
+function procKey(proj, proc) {
+  return `${proj.project_number}__${proj.machine}__${proc.no}`;
+}
+
+// 1つのセル（列×工程）の表示内容。連携工程で全体工程表のタスクがあれば、日付・担当者・完了はタスクのもの
+function getProcData(proj, proc) {
+  const rec  = statusMap[procKey(proj, proc)] || {};
+  const task = proc.linked ? linkedMap[procKey(proj, proc)] : null;
+  if (task) {
+    const inputStatus = task.completed ? '完了' : (rec.status || '');
+    return {
+      linked: true, taskId: task.id,
+      start_date: task.start_date, end_date: task.end_date, owner: task.owner,
+      inputStatus, status: inputStatus || autoStatus(task.start_date), memo: rec.memo || null,
+    };
+  }
+  return {
+    linked: false,
+    start_date: rec.start_date || null, end_date: rec.end_date || null, owner: rec.tantousha || '',
+    inputStatus: rec.status || '', status: rec.status || '', memo: rec.memo || null,
+  };
+}
+
+// 1000 件を超える取得用（Supabase は 1 回 1000 件まで）
+async function fetchAll(buildQuery) {
+  const rows = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await buildQuery().range(from, from + 999);
+    if (error) throw error;
+    rows.push(...data);
+    if (data.length < 1000) return rows;
+  }
 }
 
 function applyStatusStyle(dateTd, statusTd, statusSpan, status) {
   dateTd.classList.remove('proc-done', 'proc-na');
-  statusTd.classList.remove('proc-done', 'proc-wip');
+  statusTd.classList.remove('proc-done', 'proc-wip', 'proc-wait', 'proc-yet');
   statusSpan.className = 'status-label';
   statusSpan.textContent = status || '';
   statusSpan.style.display = status ? '' : 'none';
-  switch (status) {
-    case '完了':
-      dateTd.classList.add('proc-done');
-      statusTd.classList.add('proc-done');
-      statusSpan.classList.add('lbl-done');
-      break;
-    case '作業中':
-      statusTd.classList.add('proc-wip');
-      statusSpan.classList.add('lbl-wip');
-      break;
-    case '対象外':
-      dateTd.classList.add('proc-na');
-      statusSpan.classList.add('lbl-na');
-      break;
-  }
+  const cls = getStatusClass(status);
+  if (cls === 'done' || cls === 'na') dateTd.classList.add('proc-' + cls);
+  if (cls !== 'pending' && cls !== 'na') statusTd.classList.add('proc-' + cls);
+  if (cls !== 'pending') statusSpan.classList.add('lbl-' + cls);
 }
 
 function showLoading() {
