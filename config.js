@@ -31,40 +31,13 @@ const PROCESSES = [
   { no: 21, name: '盤立ち上げ',                                   linked: false },
   { no: 22, name: '試運転開始日',                                 linked: true,  taskTexts: ['試運転'] },
 ];
-// linked: 全体工程表の tasks と連携する工程。taskTexts は全体工程表のタスク名（先に書いたものを優先）。
-//         その機種に該当タスクが無いときは、連携しない工程と同じく電気工程表だけに保存する
+// タスクリストの項目（最初の版。将来は画面から編集できるよう DB に移す予定。no は保存データのキーなので変えない）
+// linked: 全体工程表の tasks と連携する項目。taskTexts は全体工程表のタスク名（先に書いたものを優先）。
+//         ガントチャートの帯はこのタスクの日付で引き、完了のチェックはタスクの完了にも反映する。
+//         その機種に該当タスクが無いときは、電気工程表だけに保存する
 
 // ─── ステータス ─────────────────────────────────────────
 const STATUS_LIST = ['作業中', '確認依頼中', '手配中', '完了', '対象外', '未'];
-
-// ─── 担当者マスター ─────────────────────────────────────
-const DEPT_OWNERS = {
-  営業: ['専務', '銭', '麻生', '原田', '岡本', '津村', '前川', '池田', '展久'],
-  設計: ['藤山', '田中(善)', '安岡', '川邊', '檀', '堀井', '宮﨑', '津田', '古村', '柴田', '橋本', '松本(英)'],
-  電技: ['松本(幹)', '秋藤'],
-  操業: ['堀尾', '黒見', '大西(元)', '大西(優)', '木本', '前田', '本郷', '大重', '外注'],
-  電装: ['木村(至)', '木村(圭)', '守時', '外注'],
-};
-const ALL_OWNERS = [
-  ...DEPT_OWNERS.営業, ...DEPT_OWNERS.設計, ...DEPT_OWNERS.電技,
-  ...DEPT_OWNERS.操業, ...DEPT_OWNERS.電装,
-];
-const PROCESS_OWNERS = {
-   1: DEPT_OWNERS.営業,
-   2: DEPT_OWNERS.設計,  3: DEPT_OWNERS.設計,
-   4: DEPT_OWNERS.電技,
-   5: DEPT_OWNERS.設計,  6: DEPT_OWNERS.設計,
-   7: ALL_OWNERS,
-   8: DEPT_OWNERS.電技,  9: DEPT_OWNERS.電技,
-  10: DEPT_OWNERS.設計,
-  11: DEPT_OWNERS.電技,
-  12: DEPT_OWNERS.操業,
-  13: DEPT_OWNERS.電技, 14: DEPT_OWNERS.電技, 15: DEPT_OWNERS.電技,
-  16: DEPT_OWNERS.電装,
-  17: DEPT_OWNERS.電技, 18: DEPT_OWNERS.電技,
-  19: DEPT_OWNERS.電装, 20: DEPT_OWNERS.電装,
-  21: DEPT_OWNERS.操業, 22: DEPT_OWNERS.操業,
-};
 
 // ─── 部署→クラス名マッピング ────────────────────────────
 const PROCESS_DEPT = {
@@ -83,5 +56,5 @@ const PROCESS_FLOW = {
    9: 'E→M',    10: 'M→E',     11: 'E→S',   12: 'S→E',
   13: 'E→客先', 14: 'E→代理店', 15: 'E→A',   16: 'A→E',
   17: 'E→A',   18: 'E',        20: 'A',
-  21: 'S',      22: 'A',
+  21: 'S',      22: 'S',
 };

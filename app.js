@@ -1,78 +1,19 @@
 // ─── タブ切替 ────────────────────────────────────────────
+let currentView = 'gantt';
+
 function showView(name) {
-  ['table', 'gantt', 'minutes'].forEach(v =>
-    document.getElementById('tab-' + v).classList.toggle('active', v === name));
-  document.getElementById('view-detail').style.display = 'none';
-  document.getElementById('view-table').style.display = name === 'table' ? '' : 'none';
-  document.getElementById('view-gantt').classList.toggle('active', name === 'gantt');
-  document.getElementById('view-minutes').classList.toggle('active', name === 'minutes');
-  currentDetailProjNum = null;
-  updateDetailButtons();
+  currentView = name;
+  ['gantt', 'tasklist', 'minutes'].forEach(v => {
+    document.getElementById('tab-' + v).classList.toggle('active', v === name);
+    document.getElementById('view-' + v).classList.toggle('active', v === name);
+  });
   if (name === 'gantt') setTimeout(() => showGantt(), 50);
   if (name === 'minutes') showMinutes();
 }
 
-document.getElementById('tab-table').addEventListener('click',   () => showView('table'));
-document.getElementById('tab-gantt').addEventListener('click',   () => showView('gantt'));
-document.getElementById('tab-minutes').addEventListener('click', () => showView('minutes'));
-
-// ─── ポップアップ操作（ガントチャートから開く） ─────────────
-function openPopup(proj, proc, ganttId) {
-  if (!canEdit) return;
-  const d = getProcData(proj, proc);
-
-  document.getElementById('popup-proc-name').textContent = `No.${proc.no}　${proc.name}`;
-  document.getElementById('popup-proj-info').textContent =
-    `工番: ${proj.project_number}　機種: ${proj.machine || '─'}` + (d.linked ? '　（全体工程表と連携）' : '');
-  const statusSel = document.getElementById('popup-status');
-  fillStatusOptions(statusSel);
-  statusSel.value = d.inputStatus;
-  document.getElementById('popup-start').value = d.start_date || '';
-  document.getElementById('popup-end').value   = d.end_date   || '';
-  fillOwnerOptions(document.getElementById('popup-owner'), proc.no, d.owner);
-
-  editCtx = { proj, proc, ganttId };
-  document.getElementById('edit-popup').classList.add('active');
-}
-
-function closePopup() {
-  document.getElementById('edit-popup').classList.remove('active');
-  editCtx = null;
-}
-
-document.getElementById('edit-popup').addEventListener('click', e => {
-  if (e.target === document.getElementById('edit-popup')) closePopup();
-});
-document.getElementById('popup-cancel').addEventListener('click', closePopup);
-document.addEventListener('keydown', e => { if (e.key === 'Escape') closePopup(); });
-
-document.getElementById('popup-save').addEventListener('click', async () => {
-  if (!editCtx) return;
-  const { proj, proc, ganttId } = editCtx;
-  const saveBtn = document.getElementById('popup-save');
-  saveBtn.disabled = true;
-  const ok = await saveProc(proj, proc, {
-    status:     document.getElementById('popup-status').value,
-    start_date: document.getElementById('popup-start').value || null,
-    end_date:   document.getElementById('popup-end').value   || null,
-    owner:      document.getElementById('popup-owner').value,
-  });
-  saveBtn.disabled = false;
-  if (ok) {
-    const d = getProcData(proj, proc);
-    if (d.start_date) {
-      const parentId = `${proj.project_number}__${proj.machine}`;
-      const task = Object.assign(gantt.getTask(ganttId), ganttChild(parentId, proj, proc, d));
-      task.start_date = parseLocalDate(d.start_date);
-      task.end_date   = gantt.calculateEndDate({ start_date: task.start_date, duration: task.duration });
-      gantt.updateTask(ganttId);
-    } else {
-      gantt.deleteTask(ganttId);
-    }
-    rerenderViews();
-  }
-  closePopup();
-});
+document.getElementById('tab-gantt').addEventListener('click',    () => showView('gantt'));
+document.getElementById('tab-tasklist').addEventListener('click', () => showView('tasklist'));
+document.getElementById('tab-minutes').addEventListener('click',  () => showView('minutes'));
 
 // ─── データ読み込み ───────────────────────────────────
 async function loadData() {
@@ -98,7 +39,7 @@ async function loadData() {
 
   const [tasks, custRows, statusRows] = await Promise.all([
     fetchAll(() => sb.from('tasks')
-      .select('id, project_number, machine, text, start_date, end_date, owner, status, is_completed')
+      .select('id, project_number, machine, text, start_date, end_date, status, is_completed')
       .in('project_number', projectNumbers).in('text', taskTexts).order('id')),
     fetchAll(() => sb.from('tasks')
       .select('project_number, customer_name')
@@ -127,7 +68,7 @@ async function loadData() {
         if (t) {
           linkedMap[procKey(proj, proc)] = {
             id: t.id, start_date: t.start_date, end_date: t.end_date,
-            owner: t.owner || '', completed: !!t.is_completed || t.status === '完了',
+            completed: !!t.is_completed || t.status === '完了',
           };
           break;
         }
@@ -159,26 +100,13 @@ async function refreshDisplay() {
     alert('データを読み込めませんでした。ページを再読み込みしてください。\n' + (e.message || e));
   }
 
-  const hasData = currentProjects.length > 0;
-  document.getElementById('no-data').style.display = hasData ? 'none' : 'block';
-  document.getElementById('main-table').style.display = hasData ? '' : 'none';
-  if (hasData) renderTable(currentProjects);
-
-  if (currentDetailProjNum) {
-    if (currentProjects.some(p => p.project_number === currentDetailProjNum)) renderDetailTable(currentDetailProjNum);
-    else closeDetailView();
-  }
-
-  if (ganttInitialized) {
-    gantt.clearAll();
-    const data = buildGanttData();
-    if (data.data.length > 0) gantt.parse(data);
-  }
+  renderTaskList();
+  if (currentView === 'gantt') showGantt(); // 他の画面のときは、ガントを開いたときに描き直される
 
   hideLoading();
 }
 
-// ログイン中の人が編集できるか。閲覧のみの人には工番管理と編集操作を出さない
+// ログイン中の人が編集できるか。閲覧のみの人には工番管理を出さず、タスクリスト・議事録は表示だけにする
 async function setupEditPermission() {
   const { data: { session } } = await sb.auth.getSession();
   canEdit = EDITORS.includes(String(session?.user?.email || '').toLowerCase());

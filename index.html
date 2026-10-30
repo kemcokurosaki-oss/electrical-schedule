@@ -8,58 +8,20 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ja.js" integrity="sha384-mKor8U8jwukUkfxaFPCsxKF9S62PXq4gG7zcZ5yQ2x3KL1msprJZeFlKFEDeeb5V" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261030">
+  <link rel="stylesheet" href="style.css?v=20261030b">
 </head>
 <body>
-
-<input id="fp-anchor" type="text" readonly style="position:fixed;opacity:0;pointer-events:none;width:0;height:0;border:none;">
-<div id="fp-range-label"></div>
 
 <div id="loading-overlay" class="visible">読み込み中...</div>
 
 <header>
   <div class="tab-group">
-    <button class="tab-btn active" id="tab-table">表形式</button>
-    <button class="tab-btn" id="tab-gantt">ガントチャート</button>
+    <button class="tab-btn active" id="tab-gantt">ガントチャート</button>
+    <button class="tab-btn" id="tab-tasklist">タスクリスト</button>
     <button class="tab-btn" id="tab-minutes">議事録</button>
   </div>
   <button id="btn-manage">工番管理</button>
 </header>
-
-<!-- 編集ポップアップ（表・ガント共通） -->
-<div id="edit-popup">
-  <div class="popup-box">
-    <div class="popup-header">
-      <div class="proc-name" id="popup-proc-name"></div>
-      <div class="proj-info" id="popup-proj-info"></div>
-    </div>
-    <div class="popup-body">
-      <div class="popup-field">
-        <label>ステータス</label>
-        <select id="popup-status"></select>
-      </div>
-      <div class="popup-field">
-        <label>開始日</label>
-        <input type="date" id="popup-start">
-      </div>
-      <div class="popup-field">
-        <label>終了日</label>
-        <input type="date" id="popup-end">
-      </div>
-      <div class="popup-field">
-        <label>担当者</label>
-        <select id="popup-owner"></select>
-      </div>
-    </div>
-    <div class="popup-footer">
-      <button id="popup-cancel">キャンセル</button>
-      <button id="popup-save">保存</button>
-    </div>
-  </div>
-</div>
 
 <!-- 工番管理モーダル -->
 <div id="manage-modal">
@@ -83,27 +45,28 @@
   </div>
 </div>
 
-<!-- 表ビュー -->
-<div id="view-table">
-  <div id="table-gap"></div>
-  <div id="table-wrapper">
-    <div id="no-data" style="display:none">表示する列がありません。ヘッダーの「工番管理」から工番と機種を追加してください。</div>
-    <table id="main-table" style="display:none">
-      <thead id="thead"></thead>
-      <tbody id="tbody"></tbody>
-    </table>
+<!-- ガントビュー（メイン） -->
+<div id="view-gantt" class="active">
+  <div id="gantt-toolbar">
+    <span class="toolbar-label">表示単位:</span>
+    <button class="zoom-btn zoom-active" id="zoom-day">日</button>
+    <button class="zoom-btn" id="zoom-week">週</button>
+    <button id="btn-today">今日へ移動</button>
+    <span class="toolbar-note">日付は全体工程表の予定です</span>
+    <div class="gantt-legend">
+      <span class="legend-item"><span class="legend-box denki"></span>電技</span>
+      <span class="legend-item"><span class="legend-box denso"></span>電装</span>
+      <span class="legend-item"><span class="legend-box sosou"></span>操業</span>
+      <span class="legend-item"><span class="legend-box ship"></span>工場出荷</span>
+      <span class="legend-item"><span class="legend-box done"></span>完了</span>
+    </div>
   </div>
+  <div id="gantt-container"></div>
 </div>
 
-<!-- 詳細ビュー -->
-<div id="view-detail">
-  <div id="detail-topbar">
-    <button id="btn-detail-back">← 一覧に戻る</button>
-    <span id="detail-info-bar"></span>
-  </div>
-  <div id="detail-wrapper">
-    <div id="detail-table-container"></div>
-  </div>
+<!-- タスクリストビュー -->
+<div id="view-tasklist">
+  <div id="tasklist-wrapper"></div>
 </div>
 
 <!-- 議事録ビュー -->
@@ -116,33 +79,13 @@
   <section id="minutes-main"></section>
 </div>
 
-<!-- ガントビュー -->
-<div id="view-gantt">
-  <div id="gantt-toolbar">
-    <span class="toolbar-label">表示単位:</span>
-    <button class="zoom-btn" id="zoom-day">日</button>
-    <button class="zoom-btn zoom-active" id="zoom-week">週</button>
-    <button id="btn-today">今日へ移動</button>
-    <div class="gantt-legend">
-      <span class="legend-item"><span class="legend-box eigyo"></span>営業</span>
-      <span class="legend-item"><span class="legend-box sekkei"></span>設計</span>
-      <span class="legend-item"><span class="legend-box denki"></span>電技</span>
-      <span class="legend-item"><span class="legend-box sosou"></span>操業</span>
-      <span class="legend-item"><span class="legend-box denso"></span>電装</span>
-    </div>
-  </div>
-  <div id="gantt-container"></div>
-</div>
-
-<script src="config.js?v=20261030"></script>
-<script src="state.js?v=20261030"></script>
-<script src="utils.js?v=20261030"></script>
-<script src="table.js?v=20261030"></script>
-<script src="detail.js?v=20261030"></script>
-<script src="edit.js?v=20261030"></script>
-<script src="gantt.js?v=20261030"></script>
-<script src="manage.js?v=20261030"></script>
-<script src="minutes.js?v=20261030"></script>
-<script src="app.js?v=20261030"></script>
+<script src="config.js?v=20261030b"></script>
+<script src="state.js?v=20261030b"></script>
+<script src="utils.js?v=20261030b"></script>
+<script src="tasklist.js?v=20261030b"></script>
+<script src="gantt.js?v=20261030b"></script>
+<script src="manage.js?v=20261030b"></script>
+<script src="minutes.js?v=20261030b"></script>
+<script src="app.js?v=20261030b"></script>
 </body>
 </html>
