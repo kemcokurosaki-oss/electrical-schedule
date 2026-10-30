@@ -52,7 +52,7 @@ async function loadData() {
   // 工番＋機種ごとの全体工程表の電気関係タスク（開始日の早い順。工場出荷は最後）
   const tasksByMachine = {};
   tasks
-    .filter(t => !t.is_archived)
+    .filter(t => !t.is_archived && !String(t.text || '').startsWith('現地'))
     .sort((a, b) => (a.text === '工場出荷') - (b.text === '工場出荷')
       || (a.start_date || '9999').localeCompare(b.start_date || '9999')
       || (a.sort_order || 0) - (b.sort_order || 0))
