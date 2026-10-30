@@ -144,9 +144,9 @@ header {
 
 .gantt_task_content { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-/* 今日マーカー */
-.gantt_marker.today-line { background-color: #e53e3e; width: 2px; }
-.gantt_marker_content { font-size: 10px; font-weight: bold; color: #e53e3e; padding: 0 3px; background: rgba(255,255,255,0.85); border-radius: 2px; font-family: 'Meiryo', 'メイリオ', sans-serif !important; }
+/* 今日の列 */
+.gantt_task_cell.today { background: #fde2e2; border-left: 2px solid #e53e3e; }
+.gantt_scale_cell.today { background: #e53e3e; color: white; font-weight: bold; }
 
 #gantt-container * { font-family: 'Meiryo', 'メイリオ', sans-serif !important; }
 

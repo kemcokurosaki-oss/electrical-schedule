@@ -12,7 +12,7 @@ const WEEK_SCALES = [
 let currentZoom = 'day';
 
 function initGantt() {
-  gantt.plugins({ marker: true, tooltip: true });
+  gantt.plugins({ tooltip: true });
   gantt.config.readonly = true;
   gantt.config.date_format = '%Y-%m-%d';
   gantt.config.scale_height = 54;
@@ -42,11 +42,13 @@ function initGantt() {
     return `gantt-dept-${task.deptClass}` + ({ '完了': ' gantt-done', '対象外': ' gantt-na' }[task.statusLabel] || '');
   };
   gantt.templates.task_text = (start, end, task) => task.rowType === 'item' ? (task.statusLabel || '') : '';
-  // 土日の列に色を付ける（日単位のとき）
-  gantt.templates.timeline_cell_class = (task, date) =>
-    currentZoom === 'day' && (date.getDay() === 0 || date.getDay() === 6) ? 'weekend' : '';
-  gantt.templates.scale_cell_class = date =>
-    currentZoom === 'day' && (date.getDay() === 0 || date.getDay() === 6) ? 'weekend' : '';
+  // 土日と今日の列に色を付ける（同梱の無料版には「今日」の線を引く機能が無いため、列の色で示す）
+  const cellClass = date => {
+    if (isTodayCell(date)) return 'today';
+    return currentZoom === 'day' && (date.getDay() === 0 || date.getDay() === 6) ? 'weekend' : '';
+  };
+  gantt.templates.timeline_cell_class = (task, date) => cellClass(date);
+  gantt.templates.scale_cell_class = date => cellClass(date);
 
   gantt.templates.tooltip_text = (start, end, task) => {
     if (task.rowType !== 'item') return `<b>${task.text}</b>`;
@@ -60,14 +62,11 @@ function initGantt() {
   gantt.init('gantt-container');
 }
 
-let todayMarkerId = null;
-function updateTodayMarker() {
-  if (todayMarkerId !== null) {
-    try { gantt.deleteMarker(todayMarkerId); } catch(e) {}
-  }
-  const today = new Date();
-  today.setHours(0, 0, 0, 0);
-  todayMarkerId = gantt.addMarker({ start_date: today, css: 'today-line', title: '今日' });
+// その列（日単位なら1日、週単位なら1週間）に今日が含まれるか
+function isTodayCell(date) {
+  const today = new Date(); today.setHours(0, 0, 0, 0);
+  const end = new Date(date); end.setDate(end.getDate() + (currentZoom === 'day' ? 1 : 7));
+  return date <= today && today < end;
 }
 
 function ganttDuration(startDate, endDate) {
@@ -166,7 +165,6 @@ function showGantt() {
   } else {
     gantt.render();
   }
-  updateTodayMarker();
 }
 
 // ─── ガントツールバー ─────────────────────────────────
