@@ -24,22 +24,16 @@ function procKey(proj, proc) {
   return `${proj.project_number}__${proj.machine}__${proc.no}`;
 }
 
-// 1つの項目（列×工程）の内容。連携項目で全体工程表のタスクがあれば、日付と完了はタスクのもの
-function getProcData(proj, proc) {
-  const rec  = statusMap[procKey(proj, proc)] || {};
-  const task = proc.linked ? linkedMap[procKey(proj, proc)] : null;
-  if (task) {
-    return { linked: true, taskId: task.id, start_date: task.start_date, end_date: task.end_date,
-             status: task.completed ? '完了' : (rec.status || '') };
-  }
-  return { linked: false, start_date: null, end_date: null, status: rec.status || '' };
+// タスクリストの1マス（列×項目）のステータス
+function statusOf(proj, proc) {
+  return (statusMap[procKey(proj, proc)] || {}).status || '';
 }
 
 // 列ごとの進み具合（対象外を除いた項目のうち完了の数）
 function progressOf(proj) {
   let done = 0, total = 0;
   PROCESSES.forEach(proc => {
-    const s = getProcData(proj, proc).status;
+    const s = statusOf(proj, proc);
     if (s === '対象外') return;
     total++;
     if (s === '完了') done++;

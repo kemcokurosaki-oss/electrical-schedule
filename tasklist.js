@@ -78,16 +78,12 @@ function renderTaskListProject({ pn, customer, cols }) {
 }
 
 function renderStatusCell(proj, proc) {
-  const d = getProcData(proj, proc);
+  const status = statusOf(proj, proc);
   const td = document.createElement('td');
-  td.className = 'tl-cell st-' + getStatusClass(d.status);
-  if (d.linked) {
-    td.classList.add('linked');
-    td.title = '全体工程表と連携（完了にすると全体工程表のタスクも完了になります）';
-  }
+  td.className = 'tl-cell st-' + getStatusClass(status);
 
   if (!canEdit) {
-    td.textContent = d.status;
+    td.textContent = status;
     return td;
   }
   const sel = document.createElement('select');
@@ -97,7 +93,7 @@ function renderStatusCell(proj, proc) {
     o.value = v; o.textContent = v || '─';
     sel.appendChild(o);
   });
-  sel.value = d.status;
+  sel.value = status;
   sel.addEventListener('change', async () => {
     sel.disabled = true;
     if (await saveStatus(proj, proc, sel.value)) renderTaskList();
@@ -107,28 +103,14 @@ function renderStatusCell(proj, proc) {
 }
 
 // ─── 保存 ─────────────────────────────────────────
-// 連携項目（全体工程表のタスクがあるもの）は、完了かどうかを tasks.is_completed にも書く。
-// 以前の表形式で入力した日付・担当者・メモは消さずにそのまま残す
+// 電気工程表だけに保存する（全体工程表には書かない）。以前の表形式で入力した日付・担当者・メモは消さずに残す
 async function saveStatus(proj, proc, status) {
   if (!canEdit) return false;
   const key = procKey(proj, proc);
-  const d = getProcData(proj, proc);
   const rec = { status: null, start_date: null, end_date: null, tantousha: null, memo: null, ...(statusMap[key] || {}) };
+  rec.status = status || null;
 
   try {
-    if (d.linked) {
-      const done = status === '完了';
-      if (done !== !!linkedMap[key].completed) {
-        const { data, error } = await sb.from('tasks').update({ is_completed: done }).eq('id', d.taskId).select('id');
-        if (error) throw error;
-        if (!data.length) throw new Error('全体工程表のタスクを更新できませんでした（権限がないか、ログインが切れています）');
-        linkedMap[key].completed = done;
-      }
-      rec.status = done ? null : (status || null);
-    } else {
-      rec.status = status || null;
-    }
-
     const isEmpty = !rec.status && !rec.start_date && !rec.end_date && !rec.tantousha && !rec.memo;
     if (isEmpty) {
       if (statusMap[key]) {
@@ -150,7 +132,10 @@ async function saveStatus(proj, proc, status) {
     return true;
   } catch (e) {
     console.warn('保存エラー:', e);
-    alert(`保存できませんでした。\n${e.message || e}\n\n画面を保存済みの内容に戻します。ログインが切れている場合は、ページを再読み込みしてください。`);
+    alert(`保存できませんでした。
+${e.message || e}
+
+画面を保存済みの内容に戻します。ログインが切れている場合は、ページを再読み込みしてください。`);
     await refreshDisplay();
     return false;
   }

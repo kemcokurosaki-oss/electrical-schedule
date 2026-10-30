@@ -31,16 +31,16 @@ async function loadData() {
                  link_machine: c.link_machine || c.machine, sort_order: c.sort_order }))
     .sort((a, b) => a.project_number.localeCompare(b.project_number) || a.sort_order - b.sort_order);
 
-  linkedMap = {}; shipMap = {}; statusMap = {};
+  ganttTasks = {}; statusMap = {};
   if (currentProjects.length === 0) return;
 
   const projectNumbers = [...new Set(currentProjects.map(p => p.project_number))];
-  const taskTexts = [...PROCESSES.flatMap(p => p.taskTexts || []), '工場出荷'];
+  const ganttFilter = `major_item.in.(${GANTT_MAJOR_ITEMS.join(',')}),text.in.(${GANTT_EXTRA_TEXTS.join(',')})`;
 
   const [tasks, custRows, statusRows] = await Promise.all([
     fetchAll(() => sb.from('tasks')
-      .select('id, project_number, machine, text, start_date, end_date, status, is_completed')
-      .in('project_number', projectNumbers).in('text', taskTexts).order('id')),
+      .select('id, project_number, machine, unit, text, major_item, start_date, end_date, is_completed, is_archived, sort_order')
+      .in('project_number', projectNumbers).or(ganttFilter).order('id')),
     fetchAll(() => sb.from('tasks')
       .select('project_number, customer_name')
       .in('project_number', projectNumbers).not('customer_name', 'is', null).order('id')),
@@ -49,31 +49,20 @@ async function loadData() {
       .in('project_number', projectNumbers).order('project_number').order('machine').order('process_no')),
   ]);
 
-  // 工番＋機種ごとのタスク（開始日の早い順）
+  // 工番＋機種ごとの全体工程表の電気関係タスク（開始日の早い順。工場出荷は最後）
   const tasksByMachine = {};
   tasks
-    .sort((a, b) => (a.start_date || '9999').localeCompare(b.start_date || '9999'))
+    .filter(t => !t.is_archived)
+    .sort((a, b) => (a.text === '工場出荷') - (b.text === '工場出荷')
+      || (a.start_date || '9999').localeCompare(b.start_date || '9999')
+      || (a.sort_order || 0) - (b.sort_order || 0))
     .forEach(t => {
       const k = `${t.project_number}__${t.machine || ''}`;
       (tasksByMachine[k] = tasksByMachine[k] || []).push(t);
     });
-
   currentProjects.forEach(proj => {
-    const ts = tasksByMachine[`${proj.project_number}__${proj.link_machine}`] || [];
-    shipMap[`${proj.project_number}__${proj.machine}`] =
-      ts.filter(t => t.text === '工場出荷' && t.start_date).map(t => t.start_date);
-    PROCESSES.filter(p => p.linked).forEach(proc => {
-      for (const text of proc.taskTexts) {
-        const t = ts.find(t => t.text === text);
-        if (t) {
-          linkedMap[procKey(proj, proc)] = {
-            id: t.id, start_date: t.start_date, end_date: t.end_date,
-            completed: !!t.is_completed || t.status === '完了',
-          };
-          break;
-        }
-      }
-    });
+    ganttTasks[`${proj.project_number}__${proj.machine}`] =
+      tasksByMachine[`${proj.project_number}__${proj.link_machine}`] || [];
   });
 
   const custMap = {};

@@ -135,6 +135,8 @@ header {
 .gantt_task_line.gantt-done        { background-color: #cbd5e0 !important; border-color: #a0aec0 !important; }
 .gantt_task_line.gantt-na          { background-color: transparent !important; border: 1px dashed #a0aec0 !important; }
 .gantt_task_line .gantt_task_content { font-size: 10px; color: #222; }
+.gantt_row.grid-done .gantt_cell { color: #999; }
+.gantt-check { cursor: pointer; width: 14px; height: 14px; vertical-align: middle; }
 
 /* 行の見た目（工番・機種・項目） */
 .gantt_row.grid-project { background: #e6eef7; font-weight: bold; }
