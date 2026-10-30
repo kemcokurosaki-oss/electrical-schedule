@@ -1,23 +1,20 @@
 // ─── タブ切替 ────────────────────────────────────────────
-document.getElementById('tab-table').addEventListener('click', () => {
-  document.getElementById('tab-table').classList.add('active');
-  document.getElementById('tab-gantt').classList.remove('active');
+function showView(name) {
+  ['table', 'gantt', 'minutes'].forEach(v =>
+    document.getElementById('tab-' + v).classList.toggle('active', v === name));
   document.getElementById('view-detail').style.display = 'none';
-  document.getElementById('view-table').style.display = '';
-  document.getElementById('view-gantt').classList.remove('active');
+  document.getElementById('view-table').style.display = name === 'table' ? '' : 'none';
+  document.getElementById('view-gantt').classList.toggle('active', name === 'gantt');
+  document.getElementById('view-minutes').classList.toggle('active', name === 'minutes');
   currentDetailProjNum = null;
   updateDetailButtons();
-});
+  if (name === 'gantt') setTimeout(() => showGantt(), 50);
+  if (name === 'minutes') showMinutes();
+}
 
-document.getElementById('tab-gantt').addEventListener('click', () => {
-  document.getElementById('tab-gantt').classList.add('active');
-  document.getElementById('tab-table').classList.remove('active');
-  document.getElementById('view-detail').style.display = 'none';
-  document.getElementById('view-table').style.display = 'none';
-  document.getElementById('view-gantt').classList.add('active');
-  currentDetailProjNum = null;
-  setTimeout(() => showGantt(), 50);
-});
+document.getElementById('tab-table').addEventListener('click',   () => showView('table'));
+document.getElementById('tab-gantt').addEventListener('click',   () => showView('gantt'));
+document.getElementById('tab-minutes').addEventListener('click', () => showView('minutes'));
 
 // ─── ポップアップ操作（ガントチャートから開く） ─────────────
 function openPopup(proj, proc, ganttId) {

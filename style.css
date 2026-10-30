@@ -683,3 +683,46 @@ table.detail-table {
   );
   pointer-events: none;
 }
+
+/* ─── 議事録 ─────────────────────────────────────────── */
+#view-minutes { display: none; height: calc(100vh - 44px); }
+#view-minutes.active { display: flex; }
+#minutes-side {
+  width: 210px; flex-shrink: 0; background: white; border-right: 1px solid #d0d7e0;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px; overflow-y: auto;
+}
+.minutes-search { display: flex; flex-direction: column; gap: 4px; font-size: 11px; color: #555; }
+.minutes-search input { padding: 4px 6px; font-size: 13px; border: 1px solid #cbd5e0; border-radius: 3px; }
+#minutes-new, .minutes-create-btn {
+  padding: 6px 10px; background: #1a3a5c; color: white; border: none; border-radius: 4px;
+  cursor: pointer; font-size: 12px; font-family: 'Meiryo', 'メイリオ', sans-serif;
+}
+#minutes-new:hover, .minutes-create-btn:hover { background: #2c5282; }
+#minutes-list { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #666; }
+.minutes-month { margin-top: 8px; font-size: 11px; font-weight: bold; color: #1a3a5c; border-bottom: 1px solid #e2e8f0; padding-bottom: 2px; }
+.minutes-date-btn {
+  text-align: left; padding: 4px 8px; background: none; border: none; border-radius: 3px;
+  cursor: pointer; font-size: 12px; font-family: 'Meiryo', 'メイリオ', sans-serif; color: #333;
+}
+.minutes-date-btn:hover { background: #edf2f7; }
+.minutes-date-btn.active { background: #1a3a5c; color: white; font-weight: bold; }
+
+#minutes-main { flex: 1; overflow-y: auto; padding: 16px 24px 60px; display: flex; flex-direction: column; gap: 12px; }
+.minutes-head { display: flex; align-items: center; justify-content: space-between; }
+.minutes-head h2 { font-size: 16px; color: #1a3a5c; }
+.minutes-delete-btn {
+  padding: 3px 10px; background: none; color: #c53030; border: 1px solid #feb2b2; border-radius: 3px;
+  cursor: pointer; font-size: 11px; font-family: 'Meiryo', 'メイリオ', sans-serif;
+}
+.minutes-empty { color: #666; font-size: 13px; }
+.minutes-create-btn { align-self: flex-start; }
+.minutes-section { background: white; border: 1px solid #d0d7e0; border-radius: 6px; padding: 10px 12px; }
+.minutes-section-title { font-weight: bold; font-size: 13px; color: #1a3a5c; display: flex; gap: 12px; align-items: baseline; margin-bottom: 6px; }
+.minutes-section-sub { font-size: 11px; font-weight: normal; color: #666; }
+.minutes-prev { font-size: 11px; color: #888; white-space: pre-wrap; margin-bottom: 6px; padding-left: 8px; border-left: 3px solid #e2e8f0; }
+.minutes-text {
+  width: 100%; min-height: 44px; resize: vertical; padding: 6px 8px; font-size: 13px; line-height: 1.5;
+  border: 1px solid #cbd5e0; border-radius: 4px; font-family: 'Meiryo', 'メイリオ', sans-serif;
+}
+.minutes-text.dirty { border-color: #dd6b20; background: #fffaf0; }
+.minutes-body { font-size: 13px; line-height: 1.5; white-space: pre-wrap; }

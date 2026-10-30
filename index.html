@@ -11,7 +11,7 @@
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.css" integrity="sha384-RkASv+6KfBMW9eknReJIJ6b3UnjKOKC5bOUaNgIY778NFbQ8MtWq9Lr/khUgqtTt" crossorigin="anonymous">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/flatpickr.min.js" integrity="sha384-5JqMv4L/Xa0hfvtF06qboNdhvuYXUku9ZrhZh3bSk8VXF0A/RuSLHpLsSV9Zqhl6" crossorigin="anonymous"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr@4.6.13/dist/l10n/ja.js" integrity="sha384-mKor8U8jwukUkfxaFPCsxKF9S62PXq4gG7zcZ5yQ2x3KL1msprJZeFlKFEDeeb5V" crossorigin="anonymous"></script>
-  <link rel="stylesheet" href="style.css?v=20261029b">
+  <link rel="stylesheet" href="style.css?v=20261030">
 </head>
 <body>
 
@@ -24,6 +24,7 @@
   <div class="tab-group">
     <button class="tab-btn active" id="tab-table">表形式</button>
     <button class="tab-btn" id="tab-gantt">ガントチャート</button>
+    <button class="tab-btn" id="tab-minutes">議事録</button>
   </div>
   <button id="btn-manage">工番管理</button>
 </header>
@@ -105,6 +106,16 @@
   </div>
 </div>
 
+<!-- 議事録ビュー -->
+<div id="view-minutes">
+  <aside id="minutes-side">
+    <label class="minutes-search">日付で検索<input type="date" id="minutes-date"></label>
+    <button id="minutes-new">＋今日の議事録</button>
+    <div id="minutes-list"></div>
+  </aside>
+  <section id="minutes-main"></section>
+</div>
+
 <!-- ガントビュー -->
 <div id="view-gantt">
   <div id="gantt-toolbar">
@@ -123,14 +134,15 @@
   <div id="gantt-container"></div>
 </div>
 
-<script src="config.js?v=20261029b"></script>
-<script src="state.js?v=20261029b"></script>
-<script src="utils.js?v=20261029b"></script>
-<script src="table.js?v=20261029b"></script>
-<script src="detail.js?v=20261029b"></script>
-<script src="edit.js?v=20261029b"></script>
-<script src="gantt.js?v=20261029b"></script>
-<script src="manage.js?v=20261029b"></script>
-<script src="app.js?v=20261029b"></script>
+<script src="config.js?v=20261030"></script>
+<script src="state.js?v=20261030"></script>
+<script src="utils.js?v=20261030"></script>
+<script src="table.js?v=20261030"></script>
+<script src="detail.js?v=20261030"></script>
+<script src="edit.js?v=20261030"></script>
+<script src="gantt.js?v=20261030"></script>
+<script src="manage.js?v=20261030"></script>
+<script src="minutes.js?v=20261030"></script>
+<script src="app.js?v=20261030"></script>
 </body>
 </html>
