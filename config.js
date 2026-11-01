@@ -35,11 +35,34 @@ const PROCESSES = [
 // タスクリストは工程（ガントの帯）の中の細かいやること。全体工程表とは連携せず、電気工程表だけに保存する
 
 // ─── ガントチャートに出す全体工程表のタスク ─────────────
-// 大項目（major_item）が電技・電装のタスクすべて＋下のタスク名。ただし「現地」で始まる工程（現地工事・現地試運転）は別扱いのため出さない
+// 全体工程表では大項目の付け方がばらばら（例: 電気品手配が「操業」、電気品納期が「製管」）なので、
+// 大項目・見出し・タスク名のどれかで電気関係とわかれば拾う
 const GANTT_MAJOR_ITEMS = ['電技', '電装'];
+const GANTT_PARENTS = ['電気設計＆電気品手配', '盤製作'];
+const GANTT_TEXT_KEYWORDS = ['電気図面', '電気品', '盤組立', '電気艤装', '出荷準備(電装', '出荷準備（電装', '操作盤外形図'];
 const GANTT_EXTRA_TEXTS = ['試運転', '工場出荷'];
-// 帯の色（大項目ごと。工場出荷は別の色）
-const GANTT_BAR_CLASS = { '電技': 'denki', '電装': 'denso', '操業': 'sosou' };
+
+function isElectricalTask(t) {
+  const text = String(t.text || '').trim();
+  if (!text || text.startsWith('現地')) return false; // 現地工事・現地試運転は別扱い
+  const major = String(t.major_item || '').trim();
+  // 「客先承認」は計画図の承認（大項目＝設計）と電気図面の承認があるので、設計のものは除く
+  if (text === '客先承認') return major !== '設計' && major !== '';
+  return GANTT_MAJOR_ITEMS.includes(major)
+    || GANTT_PARENTS.includes(String(t.parent || '').trim())
+    || GANTT_EXTRA_TEXTS.includes(text)
+    || GANTT_TEXT_KEYWORDS.some(k => text.includes(k));
+}
+
+// 帯の色（大項目ごと。電気関係なのに大項目が別の部署のものは、タスク名で判断。工場出荷は別の色）
+const GANTT_BAR_CLASS = { '電技': 'denki', '電装': 'denso' };
+function barClassOf(t) {
+  const text = String(t.text || '');
+  if (GANTT_BAR_CLASS[t.major_item]) return GANTT_BAR_CLASS[t.major_item];
+  if (text.includes('試運転')) return 'sosou';
+  if (/盤組立|電気艤装|電装/.test(text) || t.parent === '盤製作') return 'denso';
+  return 'denki';
+}
 
 // ─── ステータス ─────────────────────────────────────────
 const STATUS_LIST = ['作業中', '確認依頼中', '手配中', '完了', '対象外', '未'];

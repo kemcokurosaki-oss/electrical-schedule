@@ -24,6 +24,19 @@ function procKey(proj, proc) {
   return `${proj.project_number}__${proj.machine}__${proc.no}`;
 }
 
+// 機種名の照合。「DF,RV」「RA＆RG」のような複数機種のまとめ書きは分解して、どれかが一致すれば同じ機種とみなす
+function splitMachines(m) {
+  return String(m || '').split(/[,，、\/／＆&・]/).map(s => s.trim()).filter(Boolean);
+}
+function machineMatches(columnMachine, taskMachine) {
+  const c = String(columnMachine || '').trim();
+  const t = String(taskMachine || '').trim();
+  if (!t) return false; // 機種が空欄のタスクは「工番共通・その他」に出す
+  if (c === t) return true;
+  const cs = splitMachines(c), ts = splitMachines(t);
+  return cs.some(x => ts.includes(x));
+}
+
 // タスクリストの1マス（列×項目）のステータス
 function statusOf(proj, proc) {
   return (statusMap[procKey(proj, proc)] || {}).status || '';

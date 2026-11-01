@@ -99,34 +99,20 @@ function ganttDuration(startDate, endDate) {
     : 1;
 }
 
-function barClassOf(t) {
-  if (GANTT_BAR_CLASS[t.major_item]) return GANTT_BAR_CLASS[t.major_item];
-  return t.text.includes('試運転') ? 'sosou' : 'other';
-}
-
 function buildGanttData() {
   const tasks = [];
-  const projectIds = new Set();
+  const pns = [...new Set(currentProjects.map(p => p.project_number))];
 
-  currentProjects.forEach(proj => {
-    const pn = proj.project_number;
-    const pid = `p_${pn}`;
-    if (!projectIds.has(pid)) {
-      projectIds.add(pid);
-      tasks.push({ id: pid, rowType: 'project', text: `${pn}　${proj.customer_name || ''}`, open: true });
-    }
-
-    const mid = `m_${pn}__${proj.machine}`;
-    const pr = progressOf(proj);
-    tasks.push({ id: mid, parent: pid, rowType: 'machine', text: proj.machine || '(機種なし)',
-                 tasklistText: `${pr.done}/${pr.total}`, open: true });
-
-    (ganttTasks[`${pn}__${proj.machine}`] || []).forEach(t => {
-      // 同じ機種に同じ名前の工程が複数あるときはユニットで区別する（例: 電気艤装（PR））
-      const label = t.unit && t.unit !== 'ALL' ? `${t.text}（${t.unit}）` : t.text;
+  // 1行（機種）分の帯。同じ名前の工程が複数あるときだけユニットで区別する（例: 電気艤装（PR））
+  const pushItems = (parentId, rowLabel, list, showMachine) => {
+    const count = {};
+    list.forEach(t => { count[t.text] = (count[t.text] || 0) + 1; });
+    list.forEach(t => {
+      let label = count[t.text] > 1 && t.unit && t.unit !== 'ALL' ? `${t.text}（${t.unit}）` : t.text;
+      if (showMachine) label = `[${t.machine || '機種なし'}] ${label}`;
       const item = {
-        id: `${mid}__${t.id}`, parent: mid, rowType: 'item', taskId: t.id,
-        text: label, tooltipTitle: `${pn} ${proj.machine}　${label}`, majorItem: t.major_item,
+        id: `${parentId}__${t.id}`, parent: parentId, rowType: 'item', taskId: t.id,
+        text: label, tooltipTitle: `${rowLabel}　${label}`, majorItem: t.major_item,
         isShip: t.text === '工場出荷', barClass: barClassOf(t), completed: !!t.is_completed,
         start_date_str: t.start_date, end_date_str: t.end_date,
       };
@@ -134,6 +120,28 @@ function buildGanttData() {
       else item.unscheduled = true;
       tasks.push(item);
     });
+  };
+
+  pns.forEach(pn => {
+    const cols = currentProjects.filter(p => p.project_number === pn);
+    const pid = `p_${pn}`;
+    tasks.push({ id: pid, rowType: 'project', text: `${pn}　${cols[0].customer_name || ''}`, open: true });
+
+    cols.forEach(proj => {
+      const mid = `m_${pn}__${proj.machine}`;
+      const pr = progressOf(proj);
+      tasks.push({ id: mid, parent: pid, rowType: 'machine', text: proj.machine || '(機種なし)',
+                   tasklistText: `${pr.done}/${pr.total}`, open: true });
+      pushItems(mid, `${pn} ${proj.machine}`, ganttTasks[`${pn}__${proj.machine}`] || [], false);
+    });
+
+    // どの列の機種にも合わない電気関係タスク（機種が空欄、列に無い機種など）
+    const others = ganttOther[pn] || [];
+    if (others.length) {
+      const oid = `o_${pn}`;
+      tasks.push({ id: oid, parent: pid, rowType: 'machine', text: '工番共通・その他', open: true });
+      pushItems(oid, pn, others, true);
+    }
   });
 
   // 工番・機種の行の期間は、配下の帯の最初から最後まで。配下に帯が無ければ行だけ出す
