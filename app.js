@@ -86,6 +86,7 @@ async function refreshDisplay() {
   }
 
   renderTaskList();
+  renderTaskPanel();
   if (currentView === 'gantt') showGantt(); // 他の画面のときは、ガントを開いたときに描き直される
 
   hideLoading();

@@ -96,10 +96,17 @@ function renderStatusCell(proj, proc) {
   sel.value = status;
   sel.addEventListener('change', async () => {
     sel.disabled = true;
-    if (await saveStatus(proj, proc, sel.value)) renderTaskList();
+    if (await saveStatus(proj, proc, sel.value)) afterStatusSaved(proj);
   });
   td.appendChild(sel);
   return td;
+}
+
+// ステータスを保存したあと、タスクリストのタブ・ガント横のパネル・ガントの「タスク」欄をそろえる
+function afterStatusSaved(proj) {
+  renderTaskList();
+  renderTaskPanel();
+  updateGanttProgress(proj);
 }
 
 // ─── 保存 ─────────────────────────────────────────

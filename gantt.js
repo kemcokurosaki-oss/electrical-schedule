@@ -64,12 +64,14 @@ function initGantt() {
       `状態: ${task.completed ? '完了' : '未完了'}`;
   };
 
-  // 完了欄のチェックを押したとき
+  // 完了欄のチェックを押したら完了の付け外し。それ以外で行を押したら、その機種のタスクリストを右側に出す
   gantt.attachEvent('onTaskClick', (id, e) => {
     if (e.target && e.target.classList && e.target.classList.contains('gantt-check')) {
       toggleGanttDone(id);
       return false;
     }
+    const col = columnOfGanttRow(id);
+    if (col) openTaskPanel(col.project_number, col.machine);
     return true;
   });
   gantt.attachEvent('onBeforeLightbox', () => false);
@@ -132,7 +134,7 @@ function buildGanttData() {
     cols.forEach(proj => {
       const mid = `m_${pn}__${proj.machine}`;
       const pr = progressOf(proj);
-      tasks.push({ id: mid, parent: pid, rowType: 'machine', text: proj.machine || '(機種なし)',
+      tasks.push({ id: mid, parent: pid, rowType: 'machine', text: proj.machine || '(機種なし)', col: proj,
                    tasklistText: `${pr.done}/${pr.total}`, open: true });
       pushItems(mid, `${pn} ${proj.machine}`, ganttTasks[`${pn}__${proj.machine}`] || [], false);
     });
@@ -165,6 +167,24 @@ function buildGanttData() {
   });
 
   return { data: tasks, links: [] };
+}
+
+// ガントの行から、タスクリストを出す列（工番＋機種）を決める。工番の行・「工番共通・その他」はその工番の最初の機種
+function columnOfGanttRow(id) {
+  let t = gantt.getTask(id);
+  if (t.rowType === 'item') t = gantt.getTask(t.parent);
+  if (t.col) return t.col;
+  const pn = t.rowType === 'project' ? id.slice(2) : String(t.parent).slice(2); // p_工番
+  return currentProjects.find(p => p.project_number === pn) || null;
+}
+
+// タスクリストのステータスを変えたとき、機種の行の「タスク」欄（完了 x/y）を更新する
+function updateGanttProgress(proj) {
+  const mid = `m_${proj.project_number}__${proj.machine}`;
+  if (!ganttInitialized || !gantt.isTaskExists(mid)) return;
+  const pr = progressOf(proj);
+  gantt.getTask(mid).tasklistText = `${pr.done}/${pr.total}`;
+  gantt.refreshTask(mid);
 }
 
 // 完了のチェックを付け外しする（全体工程表のタスクの is_completed を書き換える）

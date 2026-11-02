@@ -120,7 +120,31 @@ header {
 .legend-box.ship   { background: #f6ad55; border-color: #c05621; }
 .legend-box.done   { background: #cbd5e0; border-color: #a0aec0; }
 
-#gantt-container { flex: 1; overflow: hidden; }
+#gantt-body { flex: 1; display: flex; min-height: 0; }
+#gantt-container { flex: 1; min-width: 0; overflow: hidden; }
+.gantt_row.grid-machine, .gantt_row.grid-item, .gantt_row.grid-project { cursor: pointer; }
+
+/* ガント横のタスクリスト（右側のパネル） */
+#tl-panel {
+  display: none; width: 470px; flex-shrink: 0; overflow-y: auto;
+  background: white; border-left: 3px solid #1a3a5c; box-shadow: -2px 0 6px rgba(0,0,0,0.08);
+}
+#view-gantt.panel-open #tl-panel { display: block; }
+.tp-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  padding: 8px 12px; background: #1a3a5c; color: white; position: sticky; top: 0; z-index: 2;
+}
+.tp-title { font-size: 14px; font-weight: bold; }
+.tp-close { background: none; border: none; color: white; font-size: 18px; cursor: pointer; line-height: 1; }
+.tp-machines { display: flex; flex-wrap: wrap; gap: 4px; padding: 8px 12px; border-bottom: 1px solid #d0d7e0; }
+.tp-machine-btn {
+  padding: 3px 10px; border: 1px solid #cbd5e0; border-radius: 3px; background: white; cursor: pointer;
+  font-size: 12px; font-family: 'Meiryo', 'メイリオ', sans-serif;
+}
+.tp-machine-btn.active { background: #1a3a5c; color: white; border-color: #1a3a5c; font-weight: bold; }
+.tp-table { width: 100%; }
+.tp-table .tl-name { min-width: 0; }
+.tp-table th { position: static; }
 
 /* ガントバーの色（部署別） */
 .gantt_task_line.gantt-dept-eigyo  { background-color: #f5a84a; border-color: #d47e1a; }
