@@ -25,15 +25,17 @@ function initGantt() {
   gantt.config.details_on_dblclick = false;
 
   gantt.config.columns = [
-    { name: 'done_check', label: '完了', width: 40, align: 'center', template: ganttCheckCell },
+    { name: 'done_check', label: '完了', width: 44, align: 'center', template: ganttCheckCell },
     { name: 'text', label: '工番 / 機種 / 工程', width: 220, tree: true },
-    { name: 'start_disp', label: '開始', width: 66, align: 'center',
+    { name: 'start_disp', label: '開始', width: 84, align: 'center',
       template: t => t.rowType === 'item' ? fmtDate(t.start_date_str) : '' },
-    { name: 'end_disp', label: '終了', width: 66, align: 'center',
+    { name: 'end_disp', label: '終了', width: 84, align: 'center',
       template: t => t.rowType === 'item' ? fmtDate(t.end_date_str || t.start_date_str) : '' },
-    { name: 'tasklist_disp', label: 'タスク', width: 52, align: 'center',
+    { name: 'tasklist_disp', label: 'タスク', width: 64, align: 'center',
       template: t => t.tasklistText || '' },
   ];
+  // 左側の表の幅は列の合計にする（初期値 360px のままだと列が押し縮められて文字が切れる）
+  gantt.config.grid_width = gantt.config.columns.reduce((sum, c) => sum + c.width, 0);
 
   gantt.templates.grid_row_class = (start, end, task) =>
     'grid-' + task.rowType + (task.completed ? ' grid-done' : '');
