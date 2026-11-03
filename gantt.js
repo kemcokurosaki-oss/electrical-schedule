@@ -3,13 +3,18 @@
 // 帯の日付は全体工程表のまま（ここでは変えない）。完了のチェックは全体工程表のタスクの完了と同じもの
 const DAY_SCALES = [
   { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
-  { unit: 'day',   step: 1, format: d => `${d.getDate()}` },
-  { unit: 'day',   step: 1, format: d => '日月火水木金土'[d.getDay()] },
+  { unit: 'day',   step: 1, format: d => `${d.getDate()}`, css: d => scaleCellClass(d) },
+  { unit: 'day',   step: 1, format: d => '日月火水木金土'[d.getDay()], css: d => scaleCellClass(d) },
 ];
 const WEEK_SCALES = [
   { unit: 'month', step: 1, format: d => `${d.getFullYear()}/${d.getMonth()+1}` },
-  { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}～` },
+  { unit: 'week',  step: 1, format: d => `${d.getMonth()+1}/${d.getDate()}～`, css: d => scaleCellClass(d) },
 ];
+// 目盛り（日付・曜日）の色。今日は赤背景に白字、土日は薄い灰色（月の行には付けない）
+function scaleCellClass(date) {
+  if (isTodayCell(date)) return 'today';
+  return currentZoom === 'day' && (date.getDay() === 0 || date.getDay() === 6) ? 'weekend' : '';
+}
 let currentZoom = 'day';
 let barMode = localStorage.getItem('denki_bar_mode') === 'dept' ? 'dept' : 'status'; // 帯の色: 状態 / 部署
 const ganttOpen = {};   // 工番・機械の行の開閉（描き直しても保つ）
@@ -52,7 +57,6 @@ function initGantt() {
     return currentZoom === 'day' && (date.getDay() === 0 || date.getDay() === 6) ? 'weekend' : '';
   };
   gantt.templates.timeline_cell_class = (task, date) => cellClass(date);
-  gantt.templates.scale_cell_class = date => cellClass(date);
 
   // 完了欄のチェックを押したら完了の付け外し。開閉の三角はそのまま。それ以外で行を押したら右側にタスクリスト
   gantt.attachEvent('onTaskClick', (id, e) => {

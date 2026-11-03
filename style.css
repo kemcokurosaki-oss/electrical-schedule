@@ -205,7 +205,7 @@ body:not([data-view="gantt"]) .bar-right { display: none; }
 .gantt_task_row.row-rel { background: #fffcf3; }
 .gantt_task_cell.weekend, .gantt_scale_cell.weekend { background: #f5f6f7; }
 .gantt_task_cell.today { background: #fdeaea; border-left: 2px solid #d64545; }
-.gantt_scale_cell.today { background: #d64545; color: #fff; font-weight: 700; }
+#gantt-container .gantt_scale_cell.today { background: #d64545; color: #fff; font-weight: 700; }
 .gantt-check { cursor: pointer; width: 14px; height: 14px; vertical-align: middle; accent-color: #2a2f35; }
 
 .ds { display: inline-block; width: 3px; height: 14px; border-radius: 2px; vertical-align: middle; margin-right: 6px; }
