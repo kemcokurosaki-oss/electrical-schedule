@@ -305,7 +305,9 @@ function renderMinutesMain(meeting, data) {
 function setDockOpen(open) {
   dockOpen = open;
   document.getElementById('min-dock').classList.toggle('open', open);
-  document.getElementById('dock-toggle').textContent = open ? '▾ 畳む' : '▴ 開く';
+  const tg = document.getElementById('dock-toggle');
+  tg.textContent = open ? '▼' : '▲';
+  tg.title = open ? '畳む' : '開く';
   renderDock();
   setTimeout(resizeGantt, 0);
 }
