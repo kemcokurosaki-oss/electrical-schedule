@@ -13,7 +13,6 @@ const WEEK_SCALES = [
 let currentZoom = 'day';
 
 function initGantt() {
-  gantt.plugins({ tooltip: true });
   gantt.config.readonly = true;
   gantt.config.date_format = '%Y-%m-%d';
   gantt.config.scale_height = 54;
@@ -53,16 +52,6 @@ function initGantt() {
   };
   gantt.templates.timeline_cell_class = (task, date) => cellClass(date);
   gantt.templates.scale_cell_class = date => cellClass(date);
-
-  gantt.templates.tooltip_text = (start, end, task) => {
-    if (task.rowType !== 'item') return `<b>${escapeHtml(task.text)}</b>`;
-    const period = task.start_date_str
-      ? `${fmtDate(task.start_date_str)}～${fmtDate(task.end_date_str || task.start_date_str)}` : '未定';
-    return `<b>${escapeHtml(task.tooltipTitle)}</b><br>` +
-      `大項目: ${escapeHtml(task.majorItem || '─')}<br>` +
-      `予定: ${period}<br>` +
-      `状態: ${task.completed ? '完了' : '未完了'}`;
-  };
 
   // 完了欄のチェックを押したら完了の付け外し。それ以外で行を押したら、その機種のタスクリストを右側に出す
   gantt.attachEvent('onTaskClick', (id, e) => {
@@ -116,7 +105,7 @@ function buildGanttData() {
       if (showMachine) label = `[${t.machine || '機種なし'}] ${label}`;
       const item = {
         id: `${parentId}__${t.id}`, parent: parentId, rowType: 'item', taskId: t.id,
-        text: label, tooltipTitle: `${rowLabel}　${label}`, majorItem: t.major_item,
+        text: label, fullTitle: `${rowLabel}　${label}`, majorItem: t.major_item,
         isShip: t.text === '工場出荷', barClass: barClassOf(t), completed: !!t.is_completed,
         start_date_str: t.start_date, end_date_str: t.end_date,
       };
@@ -192,7 +181,7 @@ async function toggleGanttDone(ganttId) {
   if (!canEdit) return;
   const task = gantt.getTask(ganttId);
   const next = !task.completed;
-  const msg = `${task.tooltipTitle}\nを${next ? '完了にします' : '未完了に戻します'}か？\n（全体工程表のタスクも${next ? '完了' : '未完了'}になります）`;
+  const msg = `${task.fullTitle}\nを${next ? '完了にします' : '未完了に戻します'}か？\n（全体工程表のタスクも${next ? '完了' : '未完了'}になります）`;
   if (!confirm(msg)) { gantt.refreshTask(ganttId); return; }
 
   const { data: { session } } = await sb.auth.getSession();
