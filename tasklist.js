@@ -1,5 +1,5 @@
 // ─── タスクリスト ─────────────────────────────────────
-// 工番ごとに 1 つの表。行が項目（1〜22）、列が機種。各マスでステータスを選ぶ
+// 工番ごとに 1 つの表。行が項目（1〜22）、列が機械。各マスでステータスを選ぶ
 const tasklistCollapsed = new Set(); // 折りたたんでいる工番
 
 function renderTaskList() {
@@ -8,7 +8,7 @@ function renderTaskList() {
   if (currentProjects.length === 0) {
     const p = document.createElement('div');
     p.className = 'no-data';
-    p.textContent = '表示する列がありません。ヘッダーの「工番管理」から工番と機種を追加してください。';
+    p.textContent = '表示する列がありません。左メニューの「工番管理」から工番と機種を追加してください。';
     wrap.appendChild(p);
     return;
   }
@@ -43,10 +43,10 @@ function renderTaskListProject({ pn, customer, cols }) {
   table.className = 'tl-table';
   const thead = document.createElement('thead');
   const htr = document.createElement('tr');
-  ['No.', '項目', '流れ'].forEach((t, i) => {
+  ['No.', '項目', '工程表の工程', '流れ'].forEach((t, i) => {
     const th = document.createElement('th');
     th.textContent = t;
-    th.className = ['tl-no', 'tl-name', 'tl-flow'][i];
+    th.className = ['tl-no', 'tl-name', 'tl-kotei', 'tl-flow'][i];
     htr.appendChild(th);
   });
   cols.forEach(c => {
@@ -67,8 +67,9 @@ function renderTaskListProject({ pn, customer, cols }) {
     tr.className = 'dept-' + (PROCESS_DEPT[proc.no] || 'other');
     const tdNo = document.createElement('td'); tdNo.className = 'tl-no'; tdNo.textContent = proc.no;
     const tdName = document.createElement('td'); tdName.className = 'tl-name'; tdName.textContent = proc.name;
+    const tdKotei = document.createElement('td'); tdKotei.className = 'tl-kotei'; tdKotei.textContent = PROCESS_KOTEI[proc.no] || '';
     const tdFlow = document.createElement('td'); tdFlow.className = 'tl-flow'; tdFlow.textContent = PROCESS_FLOW[proc.no] || '';
-    tr.appendChild(tdNo); tr.appendChild(tdName); tr.appendChild(tdFlow);
+    tr.appendChild(tdNo); tr.appendChild(tdName); tr.appendChild(tdKotei); tr.appendChild(tdFlow);
     cols.forEach(c => tr.appendChild(renderStatusCell(c, proc)));
     tbody.appendChild(tr);
   });
@@ -83,11 +84,14 @@ function renderStatusCell(proj, proc) {
   td.className = 'tl-cell st-' + getStatusClass(status);
 
   if (!canEdit) {
-    td.textContent = status;
+    const s = document.createElement('span');
+    s.className = 'st-pill';
+    s.textContent = status || '─';
+    td.appendChild(s);
     return td;
   }
   const sel = document.createElement('select');
-  sel.className = 'tl-select';
+  sel.className = 'tl-select st-pill';
   ['', ...STATUS_LIST].forEach(v => {
     const o = document.createElement('option');
     o.value = v; o.textContent = v || '─';
@@ -102,7 +106,7 @@ function renderStatusCell(proj, proc) {
   return td;
 }
 
-// ステータスを保存したあと、タスクリストのタブ・ガント横のパネル・ガントの「タスク」欄をそろえる
+// ステータスを保存したあと、タスクリストの画面・ガント横のパネル・ガントの「タスク」欄をそろえる
 function afterStatusSaved(proj) {
   renderTaskList();
   renderTaskPanel();

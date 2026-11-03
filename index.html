@@ -4,24 +4,120 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>電気工程確認表</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261103">
+  <link rel="stylesheet" href="style.css?v=20261104">
 </head>
-<body>
+<body data-view="gantt">
 
 <div id="loading-overlay" class="visible">読み込み中...</div>
 
-<header>
-  <div class="tab-group">
-    <button class="tab-btn active" id="tab-gantt">ガントチャート</button>
-    <button class="tab-btn" id="tab-tasklist">タスクリスト</button>
-    <button class="tab-btn" id="tab-minutes">議事録</button>
+<div id="app">
+  <!-- 左メニュー -->
+  <nav id="side-nav">
+    <div class="nav-brand">
+      <div class="nav-logo">電</div>
+      <div class="nav-brand-text"><b>電気工程表</b><small>KUSAKABE</small></div>
+    </div>
+    <div class="nav-label">画面</div>
+    <button class="nav-item active" id="tab-gantt" title="ガントチャート"><span class="nav-dot"></span><span class="nav-full">ガントチャート</span><span class="nav-short">ガント</span></button>
+    <button class="nav-item" id="tab-tasklist" title="タスクリスト"><span class="nav-dot"></span><span class="nav-full">タスクリスト</span><span class="nav-short">タスク</span></button>
+    <button class="nav-item" id="tab-minutes" title="議事録"><span class="nav-dot"></span><span class="nav-full">議事録</span><span class="nav-short">議事録</span></button>
+    <div class="nav-label">工事番号</div>
+    <div id="nav-projects"></div>
+    <div class="nav-bottom">
+      <button class="nav-item" id="btn-manage" title="工番管理"><span class="nav-full">工番管理</span><span class="nav-short">管理</span></button>
+      <!-- ここにログイン中のユーザー表示が入る（m365-login.js） -->
+      <button class="nav-item nav-toggle" id="nav-toggle"></button>
+    </div>
+  </nav>
+
+  <div id="main">
+    <!-- 上部バー -->
+    <header id="app-bar">
+      <div class="bar-title"><span id="view-title">ガントチャート</span><span id="view-sub"></span></div>
+      <span class="lamp meeting" id="meeting-lamp" hidden><span class="lamp-dot"></span>会議中</span>
+      <button class="lamp late" id="late-lamp" title="遅れている工程だけを表示"><span class="lamp-dot"></span>遅れ <span id="late-count">0</span>件</button>
+      <button class="lamp soon" id="soon-lamp"><span class="lamp-dot"></span>注意 <span id="soon-count">0</span>件</button>
+      <button class="btn btn-dark" id="btn-meeting-start" hidden>会議を始める</button>
+      <button class="btn btn-meeting-end" id="btn-meeting-end" hidden>会議を終える</button>
+      <div class="bar-right">
+        <div class="seg">
+          <button class="active" id="zoom-day">日単位</button>
+          <button id="zoom-week">週単位</button>
+        </div>
+        <button class="btn" id="btn-today">今日へ移動</button>
+      </div>
+    </header>
+
+    <!-- ガントビュー（メイン） -->
+    <div id="view-gantt" class="view active">
+      <div id="gantt-col">
+        <div class="filter-row" id="gantt-filters">
+          <span class="f-title">絞り込み</span>
+          <button class="chip late" data-filter="late"><span class="chip-dot"></span>遅れのみ</button>
+          <button class="chip soon" data-filter="soon"><span class="chip-dot"></span>注意のみ</button>
+          <button class="chip" data-filter="hideDone"><span class="chip-dot done"></span>完了を隠す</button>
+          <button class="chip" data-filter="mine"><span class="chip-dot mine"></span>自分の担当</button>
+          <span class="sep"></span>
+          <span class="f-label">工番</span>
+          <span class="chip-group" id="filter-pns"></span>
+          <span class="sep"></span>
+          <span class="f-label">部署</span>
+          <span class="chip-group" id="filter-depts"></span>
+          <button class="link" id="filter-clear" hidden>すべて解除</button>
+        </div>
+        <div class="tool-row">
+          <span class="f-title">バーの色</span>
+          <div class="seg sm">
+            <button id="bar-status">状態</button>
+            <button id="bar-dept">部署</button>
+          </div>
+          <button class="link" id="btn-expand">すべて開く</button>
+          <button class="link" id="btn-collapse">工番だけ表示</button>
+          <div class="gantt-legend" id="gantt-legend"></div>
+        </div>
+        <div id="gantt-wrap">
+          <div id="gantt-container"></div>
+          <div id="gantt-empty" hidden>条件に合う工程はありません</div>
+        </div>
+        <!-- 下の議事録欄 -->
+        <section id="min-dock">
+          <div class="dock-head">
+            <span class="dock-title">議事録</span>
+            <div class="seg sm dock-tabs" id="dock-tabs"></div>
+            <span class="rich-legend"><span>黒＝前回のまま</span><span class="red">赤＝訂正</span><span class="blue">青＝追記</span></span>
+            <button class="link dock-toggle" id="dock-toggle">▴ 開く</button>
+          </div>
+          <div class="dock-body" id="dock-body"></div>
+        </section>
+      </div>
+      <!-- 機械の行を押すと出る、その機械のタスクリスト -->
+      <button id="tl-tab">タスクリスト</button>
+      <aside id="tl-panel"></aside>
+    </div>
+
+    <!-- タスクリストビュー -->
+    <div id="view-tasklist" class="view">
+      <div id="tasklist-wrapper"></div>
+    </div>
+
+    <!-- 議事録ビュー -->
+    <div id="view-minutes" class="view">
+      <aside id="minutes-side">
+        <label class="minutes-search">日付で検索<input type="date" id="minutes-date"></label>
+        <button class="btn btn-dark" id="minutes-new">＋今日の議事録</button>
+        <div id="minutes-list"></div>
+      </aside>
+      <section id="minutes-main"></section>
+    </div>
   </div>
-  <button id="btn-manage">工番管理</button>
-</header>
+</div>
 
 <!-- 工番管理モーダル -->
 <div id="manage-modal">
@@ -45,52 +141,25 @@
   </div>
 </div>
 
-<!-- ガントビュー（メイン） -->
-<div id="view-gantt" class="active">
-  <div id="gantt-toolbar">
-    <span class="toolbar-label">表示単位:</span>
-    <button class="zoom-btn zoom-active" id="zoom-day">日</button>
-    <button class="zoom-btn" id="zoom-week">週</button>
-    <button id="btn-today">今日へ移動</button>
-    <span class="toolbar-note">全体工程表の電気関係の工程（日付は全体工程表で変更）。行を押すと右側にタスクリスト</span>
-    <div class="gantt-legend">
-      <span class="legend-item"><span class="legend-box denki"></span>電技</span>
-      <span class="legend-item"><span class="legend-box denso"></span>電装</span>
-      <span class="legend-item"><span class="legend-box sosou"></span>試運転</span>
-      <span class="legend-item"><span class="legend-box ship"></span>工場出荷</span>
-      <span class="legend-item"><span class="legend-box done"></span>完了</span>
-    </div>
+<!-- 議事録の印刷プレビュー -->
+<div id="print-view">
+  <div class="pv-bar">
+    <b>印刷プレビュー（A4）</b>
+    <span>印刷画面で「PDFに保存」を選ぶとPDFになります</span>
+    <button class="btn" id="pv-print">印刷する</button>
+    <button class="btn btn-ghost" id="pv-close">閉じる</button>
   </div>
-  <div id="gantt-body">
-    <div id="gantt-container"></div>
-    <!-- 機種の行を押すと出る、その機種のタスクリスト -->
-    <aside id="tl-panel"></aside>
-  </div>
+  <div class="pv-page" id="pv-page"></div>
 </div>
 
-<!-- タスクリストビュー -->
-<div id="view-tasklist">
-  <div id="tasklist-wrapper"></div>
-</div>
-
-<!-- 議事録ビュー -->
-<div id="view-minutes">
-  <aside id="minutes-side">
-    <label class="minutes-search">日付で検索<input type="date" id="minutes-date"></label>
-    <button id="minutes-new">＋今日の議事録</button>
-    <div id="minutes-list"></div>
-  </aside>
-  <section id="minutes-main"></section>
-</div>
-
-<script src="config.js?v=20261103"></script>
-<script src="state.js?v=20261103"></script>
-<script src="utils.js?v=20261103"></script>
-<script src="tasklist.js?v=20261103"></script>
-<script src="taskpanel.js?v=20261103"></script>
-<script src="gantt.js?v=20261103"></script>
-<script src="manage.js?v=20261103"></script>
-<script src="minutes.js?v=20261103"></script>
-<script src="app.js?v=20261103"></script>
+<script src="config.js?v=20261104"></script>
+<script src="state.js?v=20261104"></script>
+<script src="utils.js?v=20261104"></script>
+<script src="tasklist.js?v=20261104"></script>
+<script src="taskpanel.js?v=20261104"></script>
+<script src="gantt.js?v=20261104"></script>
+<script src="manage.js?v=20261104"></script>
+<script src="minutes.js?v=20261104"></script>
+<script src="app.js?v=20261104"></script>
 </body>
 </html>
