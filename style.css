@@ -248,7 +248,7 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 #min-dock.open { height: 250px; }
 .dock-head { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 14px; border-bottom: 1px solid #d5d9de; background: #f5f6f7; }
 .dock-title { font-size: 14px; font-weight: 700; }
-.dock-tabs { min-width: 0; overflow-x: auto; }
+.dock-tabs { min-width: 0; flex-wrap: wrap; }
 .dock-toggle { margin-left: auto; font-weight: 700; text-decoration: none; }
 .dock-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; display: none; flex-direction: column; gap: 6px; }
 #min-dock.open .dock-body { display: flex; }
@@ -256,6 +256,10 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .dock-slot-title b { font-size: 13px; }
 .dock-slot-title span { font-size: 11.5px; color: #7c858f; }
 .dock-editor { flex: 1; min-height: 80px; }
+.dock-rows { border: 1px solid #d5d9de; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
+.dock-rows .mn-row:first-child { border-top: none; }
+.dock-rows .mn-row.focus .mn-row-title { background: #2a2f35; color: #fff; }
+.dock-rows .mn-row.focus .mn-row-body { background: #f3f5f7; }
 .dock-empty { color: #8a929b; font-size: 13px; padding: 6px 0; }
 .rich-legend { display: inline-flex; gap: 10px; font-size: 11.5px; white-space: nowrap; }
 .rich-legend .red { color: #c03030; font-weight: 700; }

@@ -225,14 +225,15 @@ function buildGanttData() {
   return { data: tasks, links: [] };
 }
 
-// 行を押したとき: 右にその機械のタスクリスト、下の議事録欄をその機械に切り替える
+// 行を押したとき: 右にその機械のタスクリスト、下の議事録欄をその工番のページ（その機械の欄を目立たせる）に切り替える
 function onGanttRowClick(id) {
   const t = gantt.getTask(id);
   const pn = t.pn;
   selectedPn = pn;
   if (t.rowType === 'project') {
     const col = currentProjects.find(p => p.project_number === pn);
-    if (col) { openTaskPanel(pn, col.machine); setDockKey(pn, col.machine); }
+    if (col) openTaskPanel(pn, col.machine);
+    setDockKey(pn);
   } else if (t.rowType === 'machine') {
     if (t.col) { openTaskPanel(pn, t.col.machine); setDockKey(pn, t.col.machine); }
     else setDockKey(pn, ''); // 工番共通・その他
