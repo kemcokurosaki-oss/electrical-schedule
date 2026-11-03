@@ -375,8 +375,8 @@ async function renderDock() {
   title.querySelector('span').textContent = meeting.meeting_date === todayStr()
     ? `${fmtMeetingDate(meeting.meeting_date)}　前回の内容を引き継いでいます`
     : `${fmtMeetingDate(meeting.meeting_date)}（前回）${canEdit ? '　「会議を始める」で今日の議事録に引き継ぎます' : ''}`;
+  if (canEdit) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
-  if (canEdit) body.appendChild(createRichToolbar());
 
   if (!page.group) {
     const ed = createEditor(meeting, '__all', getBody(data, '__all'));

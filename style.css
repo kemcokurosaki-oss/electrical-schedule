@@ -254,9 +254,10 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .dock-head .rich-legend { margin-left: auto; }
 .dock-body { flex: 1; min-height: 0; overflow: auto; padding: 10px 14px; display: none; flex-direction: column; gap: 6px; }
 #min-dock.open .dock-body { display: flex; }
-.dock-slot-title { display: flex; align-items: baseline; gap: 10px; }
-.dock-slot-title b { font-size: 13px; }
-.dock-slot-title span { font-size: 11.5px; color: #7c858f; }
+.dock-slot-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.dock-slot-title > b { font-size: 13px; }
+.dock-slot-title > span { font-size: 11.5px; color: #7c858f; }
+.dock-slot-title .rt-tools { margin-left: 6px; }
 .dock-editor { flex: 1; min-height: 80px; }
 .dock-rows { border: 1px solid #d5d9de; border-radius: 6px; overflow: hidden; flex-shrink: 0; }
 .dock-rows .mn-row:first-child { border-top: none; }
