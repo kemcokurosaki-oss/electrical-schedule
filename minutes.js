@@ -5,6 +5,7 @@
 let minutesList = [];          // [{ id, meeting_date, started_at, ended_at }] 新しい順
 let minutesSelectedDate = null;
 let minutesLoaded = false;
+let minutesPn = '__all';       // 議事録の画面で表示している工番（'__all' は全体）
 const minutesCache = {};       // 会議 id → { decisions, notes: { '工番|機械': 本文 } }
 let dockKey = '__all';         // 下の議事録欄で表示しているページ（'__all' か工番）
 let dockMachine = null;        // 工番のページで表示している機械（'' は工番共通）
@@ -321,8 +322,32 @@ function renderMinutesMain(meeting, data) {
     });
     return c;
   };
-  main.appendChild(card('全体', '', [{ key: '__all', title: '決定事項' }]));
-  noteGroups(data).forEach(g => main.appendChild(card(g.pn, g.customer, g.slots)));
+  // 「全体」と工番を切り替えて、選んだ工番の機械ごとの欄を並べる
+  const groups = noteGroups(data);
+  if (minutesPn !== '__all' && !groups.some(g => g.pn === minutesPn)) minutesPn = '__all';
+  const pick = document.createElement('div');
+  pick.className = 'mn-pick';
+  const seg = () => { const d = document.createElement('div'); d.className = 'seg sm'; pick.appendChild(d); return d; };
+  const pickBtn = (parent, label, key) => {
+    const b = document.createElement('button');
+    b.className = key === minutesPn ? 'active' : '';
+    b.textContent = label;
+    b.addEventListener('click', async () => { await flushEditors(); minutesPn = key; renderMinutesMain(meeting, data); });
+    parent.appendChild(b);
+  };
+  pickBtn(seg(), '全体', '__all');
+  if (groups.length) {
+    const s = seg();
+    const l = document.createElement('span');
+    l.className = 'dock-seg-label';
+    l.textContent = '工番';
+    s.appendChild(l);
+    groups.forEach(g => pickBtn(s, g.pn, g.pn));
+  }
+  main.appendChild(pick);
+
+  const g = groups.find(x => x.pn === minutesPn);
+  main.appendChild(g ? card(g.pn, g.customer, g.slots) : card('全体', '', [{ key: '__all', title: '決定事項' }]));
 }
 
 // ─── 下の議事録欄（ガントの画面） ─────────────────────

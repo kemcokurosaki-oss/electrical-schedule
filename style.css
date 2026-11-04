@@ -426,6 +426,9 @@ select.st-pill:focus { outline: 2px solid #2a2f35; outline-offset: 1px; }
 .mn-row { display: grid; grid-template-columns: 96px minmax(0, 1fr); border-top: 1px solid #e3e6ea; }
 .mn-row-title { padding: 10px 14px; font-size: 13px; font-weight: 700; border-right: 1px solid #eef0f2; background: #fafbfb; }
 .mn-row-body { padding: 6px 10px 8px; }
+.mn-row-body .rt-editor { min-height: 110px; }
+.mn-pick { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+.mn-pick .seg { flex-wrap: wrap; }
 
 /* ─── 印刷プレビュー ─────────────────────────────────── */
 #print-view { display: none; position: fixed; inset: 0; background: rgba(42,47,53,.55); z-index: 1100; overflow: auto; padding: 24px 0 40px; }
