@@ -262,13 +262,13 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .save-status[data-state="dirty"] { color: #b86e00; font-weight: 700; }
 .save-status[data-state="error"] { color: #c03030; font-weight: 700; }
 .save-status[data-state="saved"] { color: #1d6b3f; }
-.save-note { color: #8a5a00 !important; font-size: 11.5px; }
-.save-note[hidden], .carry-banner[hidden] { display: none; }
+#dock-save { display: inline-flex; align-items: center; gap: 8px; }
+#dock-more[hidden] { display: none; }
+#dock-more .btn-more { width: 28px; height: 28px; }
 .new-date-controls, .new-date-form { display: inline-flex; align-items: center; gap: 6px; }
 .new-date-controls .btn { height: 28px; padding: 0 12px; font-size: 12.5px; }
 .new-date-controls [hidden] { display: none; }
 .save-date { height: 28px; padding: 0 6px; font-size: 12.5px; border: 1px solid #c9ced4; border-radius: 6px; color: #2a2f35; }
-.carry-banner { padding: 8px 12px; background: #fff8e6; border: 1px solid #f0d08a; border-radius: 6px; font-size: 12.5px; }
 .dock-seg-label { align-self: center; padding: 0 6px 0 8px; font-size: 11px; font-weight: 700; color: #7c858f; white-space: nowrap; }
 .dock-machines button.active { background: #1f5fa8; }
 .dock-empty { color: #8a929b; font-size: 13px; padding: 6px 0; }
@@ -485,8 +485,6 @@ body[data-view="minutes"] .lamp { display: none; }
 .more-item.danger { color: #b33232; }
 .more-item.danger:hover { background: #fdeaea; }
 .more-sep { height: 1px; background: #e3e6ea; margin: 4px 0; }
-.past-banner { display: flex; align-items: center; gap: 12px; color: #8a5a00; }
-.past-banner span { flex: 1; }
 
 /* 議事録: 「全体」と工番のタブ（増えたら横にスクロール） */
 .mn-tabs { display: flex; align-items: flex-end; gap: 2px; overflow-x: auto; overflow-y: hidden; margin-bottom: -12px; background: linear-gradient(#d5d9de, #d5d9de) left bottom / 100% 1px no-repeat; } /* 下の線は背景で引く（横スクロールでもタブが線を隠せるように） */
@@ -494,6 +492,8 @@ body[data-view="minutes"] .lamp { display: none; }
 .mn-tab:hover { background: #fff; }
 .mn-tab.active { background: #fff; border-color: #d5d9de; border-bottom-color: #fff; color: #2a2f35; }
 .mn-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #1f5fa8; }
+.seg button .mn-tab-dot { display: inline-block; margin-left: 5px; vertical-align: middle; } /* 下の議事録欄のタブ */
+.seg button.active .mn-tab-dot { background: #7fb2ec; }
 .mn-tabs + .mn-card { border-top: none; border-radius: 0 0 8px 8px; }
 
 /* 議事録: 見出し～タブ～工番の見出しの行はスクロールしても上に残す */
