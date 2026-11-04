@@ -1,7 +1,7 @@
 // ─── 議事録（電気工程会議） ─────────────────────────────
 // 会議日ごとに「全体の決定事項」＋「工番の機械ごとの欄」（機械が合わない工程がある工番は「工番共通」の欄も）。
 // 本文は書式付き（黒・赤・青・取り消し線）。開くと最新の議事録を表示し、書き込むと表示中の議事録に自動で保存する。
-// 会議の分は「新しい日付で作成」で、表示中の内容を色や取り消し線ごと全部コピーした新しい日付の議事録を先に作ってから書く。
+// 会議の分は「＋コピーして新規作成」で、表示中の内容を色や取り消し線ごと全部コピーした新しい日付の議事録を先に作ってから書く。
 // 今日より前の議事録に書こうとしたら、直接直すか確認する。
 // denki_meetings（会議日・決定事項）／denki_meeting_notes（工番＋機械ごとの欄。machine='' は工番共通）
 let minutesList = [];          // [{ id, meeting_date }] 新しい順
@@ -55,7 +55,7 @@ function meetingByDate(dateStr) {
   return minutesList.find(m => m.meeting_date === dateStr) || null;
 }
 
-let dockPinId = null;          // 「新しい日付で作成」で作った回の id（下の議事録欄はこの回を出す）
+let dockPinId = null;          // 「＋コピーして新規作成」で作った回の id（下の議事録欄はこの回を出す）
 const pastEditOk = new Set();  // 過去の議事録を直接直すと確認済みの回の id
 
 // 下の議事録欄に出す回: 新しく作った回 → 今日の議事録 → 一番新しい回 → （まだ1件も無ければ）空の議事録
@@ -73,7 +73,7 @@ function shownMeeting() {
 // 見出しの横の注意書き: 今日より前の議事録を表示しているとき
 function pastNoteText(meeting) {
   if (!canEdit || !meeting || !meeting.id || meeting.meeting_date >= todayStr()) return '';
-  return `過去（${fmtMeetingDate(meeting.meeting_date)}）の議事録です。今日の会議の分は「新しい日付で作成」で作ってから書いてください`;
+  return `過去（${fmtMeetingDate(meeting.meeting_date)}）の議事録です。今日の会議の分は「＋コピーして新規作成」で作ってから書いてください`;
 }
 
 // 表示中の議事録の内容をコピーして、選んだ日付の議事録を作り、表示をその回に切り替える
@@ -96,14 +96,14 @@ async function copyMeetingTo(src, dateStr) {
   return m;
 }
 
-// 「新しい日付で作成」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
+// 「＋コピーして新規作成」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
 function createNewDateControls() {
   const wrap = document.createElement('span');
   wrap.className = 'new-date-controls';
   const open = document.createElement('button');
   open.className = 'btn';
-  open.textContent = '新しい日付で作成';
-  open.title = '表示中の議事録の内容をコピーして、選んだ日付の議事録を作ります';
+  open.textContent = '＋コピーして新規作成';
+  open.title = '表示中の議事録の内容をコピーして、選んだ日付の新しい議事録を作ります';
   const form = document.createElement('span');
   form.className = 'new-date-form';
   form.hidden = true;
@@ -414,7 +414,6 @@ function renderMinutesMain(meeting, data) {
   const h2 = document.createElement('h2');
   h2.textContent = `${fmtMeetingDate(meeting.meeting_date)}　電気工程会議`;
   head.appendChild(h2);
-  head.appendChild(richLegend());
   const right = document.createElement('div');
   right.className = 'minutes-head-right';
   if (canEdit) right.appendChild(createSaveControls());
@@ -426,7 +425,8 @@ function renderMinutesMain(meeting, data) {
   if (canEdit) {
     const del = document.createElement('button');
     del.className = 'btn btn-danger';
-    del.textContent = 'この議事録を削除';
+    del.textContent = '削除';
+    del.title = 'この議事録を削除';
     del.addEventListener('click', () => deleteMinutes(meeting));
     right.appendChild(del);
   }
@@ -437,12 +437,6 @@ function renderMinutesMain(meeting, data) {
   main.appendChild(note);
   renderSaveState();
 
-  if (canEdit) {
-    const tools = createRichToolbar();
-    tools.classList.add('mn-tools');
-    main.appendChild(tools);
-  }
-
   const card = (pn, customer, slots) => {
     const c = document.createElement('div');
     c.className = 'mn-card';
@@ -451,6 +445,12 @@ function renderMinutesMain(meeting, data) {
     h.innerHTML = '<b></b><span></span>';
     h.querySelector('b').textContent = pn;
     h.querySelector('span').textContent = customer || '';
+    // 色の説明と書式のボタンは、全体・工番の見出しの行の右端に置く
+    const right = document.createElement('div');
+    right.className = 'mn-card-tools';
+    right.appendChild(richLegend());
+    if (canEdit) right.appendChild(createRichToolbar());
+    h.appendChild(right);
     c.appendChild(h);
     slots.forEach(s => {
       const row = document.createElement('div');
