@@ -173,8 +173,8 @@ function createRichToolbar() {
   wrap.appendChild(pop);
   bar.appendChild(wrap);
 
-  const strike = button('strike', '選んだ文字に取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
-  strike.textContent = '取り消し';
+  const strike = button('strike', '取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
+  strike.textContent = 'abc';
   bar.appendChild(strike);
   const clear = button('clear', '色と取り消し線を外す', () => run('removeFormat'));
   clear.textContent = '書式解除';
