@@ -10,7 +10,7 @@ function showView(name) {
     document.getElementById('view-' + v).classList.toggle('active', v === name);
   });
   document.getElementById('view-title').textContent = VIEW_TITLES[name];
-  if (name === 'gantt') setTimeout(() => showGantt(), 50);
+  if (name === 'gantt') { setTimeout(() => showGantt(), 50); renderDock(); } // 議事録の画面で作った・直した内容と保存先の日付を下の議事録欄にも反映
   if (name === 'minutes') showMinutes();
   renderNavProjects();
 }
