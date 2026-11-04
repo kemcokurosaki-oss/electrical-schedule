@@ -308,11 +308,6 @@ function createRichToolbar() {
     b.addEventListener('mousedown', e => { e.preventDefault(); onDown(e); }); // 入力欄の選択を外さない
     return b;
   };
-  const hint = document.createElement('span');
-  hint.className = 'rt-hint';
-  hint.textContent = '文字を選んでから押す';
-  bar.appendChild(hint);
-
   const colors = document.createElement('span');
   colors.className = 'rt-colors';
   RT_COLORS.forEach(([label, color]) => {
@@ -443,9 +438,16 @@ function renderMinutesMeta(meeting) {
     s.lastChild.textContent = value;
     el.appendChild(s);
   };
-  const prev = minutesList.find(m => m.meeting_date < meeting.meeting_date); // 一覧は新しい順なので、最初に見つかった回が前回
-  item('引き継ぎ元', prev ? `前回 ${fmtMeetingDate(prev.meeting_date)}` : 'なし（最初の議事録）');
+  item('引き継ぎ元', carryFromText(meeting));
   if (meeting.updated_at) item('最終更新', fmtStamp(meeting.updated_at));
+}
+function carryFromText(meeting) {
+  const prev = minutesList.find(m => m.meeting_date < meeting.meeting_date); // 一覧は新しい順なので、最初に見つかった回が前回
+  return prev ? `前回 ${fmtMeetingDate(prev.meeting_date)}` : 'なし（最初の議事録）';
+}
+// 下の議事録欄の日付の右に出す「引き継ぎ元」「最終更新」
+function dockMetaText(meeting) {
+  return `引き継ぎ元 ${carryFromText(meeting)}` + (meeting.updated_at ? `・最終更新 ${fmtStamp(meeting.updated_at)}` : '');
 }
 
 // 「過去の議事録」の札（今日より前の回を表示しているとき）
@@ -691,6 +693,12 @@ async function renderDock() {
   title.innerHTML = '<b></b><span></span>';
   title.querySelector('b').textContent = slot ? `${page.title}　${slot.title}` : page.title;
   title.querySelector('span').textContent = meeting.id ? `${fmtMeetingDate(meeting.meeting_date)}の議事録` : '';
+  if (meeting.id) {
+    const meta = document.createElement('span');
+    meta.className = 'dock-meta';
+    meta.textContent = dockMetaText(meeting);
+    title.appendChild(meta);
+  }
   if (meeting.id && meeting.meeting_date < todayStr()) title.appendChild(pastTag());
   if (canEdit && key) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
@@ -738,6 +746,7 @@ async function saveBody(meetingId, key, body) {
     const m = minutesList.find(x => x.id === meetingId);
     if (m) m.updated_at = new Date().toISOString();
     if (currentView === 'minutes' && m && m.meeting_date === minutesSelectedDate) renderMinutesMeta(m);
+    if (m && dockMeeting()?.id === meetingId) document.querySelectorAll('.dock-meta').forEach(el => { el.textContent = dockMetaText(m); });
   }
   if (ok && minutesCache[meetingId]) {
     if (key === '__all') minutesCache[meetingId].decisions = body;

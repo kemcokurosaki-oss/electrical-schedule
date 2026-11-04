@@ -252,8 +252,8 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 #min-dock.open .dock-body { display: flex; }
 .dock-slot-title { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
 .dock-slot-title > b { font-size: 13px; }
-.dock-slot-title > span { font-size: 11.5px; color: #7c858f; }
-.dock-slot-title .rt-tools { margin-left: 6px; }
+.dock-slot-title > span:not(.past-tag) { font-size: 11.5px; color: #7c858f; }
+.dock-slot-title .rt-tools { margin-left: auto; } /* 書式のボタンは右端 */
 .dock-editor { flex: 1; min-height: 80px; }
 .dock-tabs[hidden], #dock-all:empty { display: none; }
 .save-controls { display: inline-flex; align-items: center; gap: 8px; }
@@ -262,8 +262,11 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .save-status[data-state="dirty"] { color: #b86e00; font-weight: 700; }
 .save-status[data-state="error"] { color: #c03030; font-weight: 700; }
 .save-status[data-state="saved"] { color: #1d6b3f; }
-#dock-save { display: inline-flex; align-items: center; gap: 8px; }
+#dock-save { flex: 1; min-width: 0; display: flex; align-items: center; gap: 8px; }
+#dock-save .save-controls { flex: 1; }
+#dock-save .save-status { margin-left: auto; } /* 保存の状態・保存・「⋯」は右端 */
 #dock-more[hidden] { display: none; }
+#dock-save > #dock-more:first-child { margin-left: auto; } /* 閲覧だけの人（保存ボタンなし） */
 #dock-more .btn-more { width: 28px; height: 28px; }
 .new-date-controls, .new-date-form { display: inline-flex; align-items: center; gap: 6px; }
 .new-date-controls .btn { height: 28px; padding: 0 12px; font-size: 12.5px; }
@@ -278,7 +281,6 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 
 /* 書式付きの入力欄 */
 .rt-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rt-hint { font-size: 11px; color: #7c858f; white-space: nowrap; }
 .rt-colors { display: flex; gap: 2px; padding: 3px; background: #eef0f2; border: 1px solid #d5d9de; border-radius: 8px; }
 .rt-btn.rt-color-btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 6px; padding: 0 10px; }
 .rt-btn.rt-color-btn:hover { background: #e3e6ea; }
@@ -492,8 +494,9 @@ body[data-view="minutes"] .lamp { display: none; }
 .mn-tab:hover { background: #fff; }
 .mn-tab.active { background: #fff; border-color: #d5d9de; border-bottom-color: #fff; color: #2a2f35; }
 .mn-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #1f5fa8; }
-.seg button .mn-tab-dot { display: inline-block; margin-left: 5px; vertical-align: middle; } /* 下の議事録欄のタブ */
-.seg button.active .mn-tab-dot { background: #7fb2ec; }
+#min-dock .seg button { display: inline-flex; align-items: center; } /* 下の議事録欄のタブ（青い点を文字の中央にそろえる） */
+.seg button .mn-tab-dot { flex-shrink: 0; margin-left: 5px; }
+.seg button.active .mn-tab-dot { background: #fff; }
 .mn-tabs + .mn-card { border-top: none; border-radius: 0 0 8px 8px; }
 
 /* 議事録: 見出し～タブ～工番の見出しの行はスクロールしても上に残す */
