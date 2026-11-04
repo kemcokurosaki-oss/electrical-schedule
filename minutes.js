@@ -644,15 +644,12 @@ async function renderDock() {
   }
   const dm = dockMeeting();
   document.getElementById('dock-more').hidden = !(dm && dm.id); // まだ1件も無いときは出さない
-  const tabs = document.getElementById('dock-tabs');
-  const mTabs = document.getElementById('dock-machines');
   const body = document.getElementById('dock-body');
+  const tabbar = document.getElementById('dock-tabbar');
   const meeting = dockMeeting();
+  renderDockHeadInfo(meeting);
   if (!meeting) {
-    tabs.innerHTML = '';
-    document.getElementById('dock-all').innerHTML = '';
-    mTabs.innerHTML = '';
-    mTabs.hidden = true;
+    tabbar.innerHTML = '';
     body.innerHTML = '';
     const p = document.createElement('div');
     p.className = 'dock-empty';
@@ -663,8 +660,9 @@ async function renderDock() {
   let data;
   try { data = await loadMeetingData(meeting); }
   catch (e) { body.textContent = '議事録を読み込めませんでした: ' + (e.message || e); return; }
+  if (dockMeeting() !== meeting) return; // 読み込み中に別の回を選んだ
 
-  // タブは「全体」と工番ごと。工番を選ぶと右に機械の一覧が出て、選んだ機械の欄だけを表示する
+  // タブは「全体」と工番ごと（議事録の画面と同じ形）。工番を選ぶと見出しの行に機械の一覧が出て、選んだ機械の欄だけを表示する
   const groups = noteGroups(data);
   const pages = [{ key: '__all', label: '全体', title: '全体の決定事項' },
     ...groups.map(g => ({ key: g.pn, label: g.pn, title: `${g.pn}　${g.customer}`, group: g }))];
@@ -673,40 +671,23 @@ async function renderDock() {
   const slots = page.group ? page.group.slots : [];
   if (page.group && !slots.some(s => s.machine === dockMachine)) dockMachine = slots[0] ? slots[0].machine : null;
 
-  const segButton = (label, title, active, onClick, has) => {
+  tabbar.innerHTML = '';
+  const tabs = document.createElement('div');
+  tabs.className = 'mn-tabs dock-mn-tabs';
+  pages.forEach(s => {
     const b = document.createElement('button');
-    b.className = active ? 'active' : '';
-    b.textContent = label;
-    b.title = title;
-    if (has) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
-    b.addEventListener('click', onClick);
-    return b;
-  };
-  const segLabel = text => {
-    const l = document.createElement('span');
-    l.className = 'dock-seg-label';
-    l.textContent = text;
-    return l;
-  };
-  tabs.innerHTML = '';
-  // 「全体」と工番は別の枠に分ける
-  const allTab = document.getElementById('dock-all');
-  allTab.innerHTML = '';
-  tabs.hidden = pages.length < 2;
-  pages.forEach((s, i) => {
-    if (i === 1) tabs.appendChild(segLabel('工番'));
-    (i === 0 ? allTab : tabs).appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
+    b.className = 'mn-tab' + (s.key === dockKey ? ' active' : '');
+    b.textContent = s.label;
+    b.title = s.title;
+    if (s.group && s.group.slots.some(x => data.notes[x.key])) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
+    b.addEventListener('click', async () => {
+      await flushEditors();
       dockKey = s.key; dockMachine = null;
       if (!dockOpen) setDockOpen(true); else renderDock();
-    }, s.group && s.group.slots.some(x => data.notes[x.key])));
+    });
+    tabs.appendChild(b);
   });
-  mTabs.innerHTML = '';
-  mTabs.hidden = !page.group;
-  if (page.group) mTabs.appendChild(segLabel('機械'));
-  slots.forEach(s => mTabs.appendChild(segButton(s.title, `${page.group.pn}　${s.title}`, s.machine === dockMachine, () => {
-    dockMachine = s.machine;
-    if (!dockOpen) setDockOpen(true); else renderDock();
-  }, !!data.notes[s.key])));
+  tabbar.appendChild(tabs);
 
   if (!dockOpen) return;
   const slot = page.group ? slots.find(s => s.machine === dockMachine) : null;
@@ -714,16 +695,27 @@ async function renderDock() {
   body.innerHTML = '';
   const title = document.createElement('div');
   title.className = 'dock-slot-title';
-  title.innerHTML = '<b></b><span></span>';
-  title.querySelector('b').textContent = slot ? `${page.title}　${slot.title}` : page.title;
-  title.querySelector('span').textContent = meeting.id ? `${fmtMeetingDate(meeting.meeting_date)}の議事録` : '';
-  if (meeting.id) {
-    const meta = document.createElement('span');
-    meta.className = 'dock-meta';
-    meta.textContent = dockMetaText(meeting);
-    title.appendChild(meta);
+  const tb = document.createElement('b');
+  tb.textContent = page.title;
+  title.appendChild(tb);
+  if (page.group) { // 機械の切り替え
+    const seg = document.createElement('div');
+    seg.className = 'seg sm dock-machines';
+    const l = document.createElement('span');
+    l.className = 'dock-seg-label';
+    l.textContent = '機械';
+    seg.appendChild(l);
+    slots.forEach(s => {
+      const b = document.createElement('button');
+      b.className = s.machine === dockMachine ? 'active' : '';
+      b.textContent = s.title;
+      b.title = `${page.group.pn}　${s.title}`;
+      if (data.notes[s.key]) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
+      b.addEventListener('click', async () => { await flushEditors(); dockMachine = s.machine; renderDock(); });
+      seg.appendChild(b);
+    });
+    title.appendChild(seg);
   }
-  if (meeting.id && meeting.meeting_date < todayStr()) title.appendChild(pastTag());
   if (canEdit && key) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
   renderSaveState();
@@ -732,6 +724,34 @@ async function renderDock() {
   ed.classList.add('dock-editor');
   body.appendChild(ed);
 }
+
+// 上の段: 日付のプルダウン（押すと過去の回も選べる）、「過去の議事録」の札、引き継ぎ元・最終更新
+function renderDockHeadInfo(meeting) {
+  const sel = document.getElementById('dock-date');
+  sel.innerHTML = '';
+  if (!meeting || !meeting.id) {
+    const o = document.createElement('option');
+    o.textContent = '（まだありません）';
+    sel.appendChild(o);
+    sel.disabled = true;
+  } else {
+    sel.disabled = false;
+    minutesList.forEach(m => {
+      const o = document.createElement('option');
+      o.value = m.id;
+      o.textContent = fmtMeetingDate(m.meeting_date) + (m.meeting_date === todayStr() ? '　今日' : '');
+      o.selected = m.id === meeting.id;
+      sel.appendChild(o);
+    });
+  }
+  document.getElementById('dock-past').hidden = !(meeting && meeting.id && meeting.meeting_date < todayStr());
+  document.getElementById('dock-meta').textContent = meeting && meeting.id ? dockMetaText(meeting) : '';
+}
+document.getElementById('dock-date').addEventListener('change', async e => {
+  await flushEditors();
+  dockPinId = minutesList.find(m => String(m.id) === e.target.value)?.id || null;
+  renderDock();
+});
 
 // ─── 保存 ───────────────────────────────────────────
 // 議事録を作る。source の回（省略時はその日より前の一番新しい回）の内容（決定事項と全部の欄）を引き継ぐ
