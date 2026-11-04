@@ -496,6 +496,13 @@ body[data-view="minutes"] .lamp { display: none; }
 .mn-tab-dot { width: 6px; height: 6px; border-radius: 50%; background: #1f5fa8; }
 .mn-tabs + .mn-card { border-top: none; border-radius: 0 0 8px 8px; }
 
+/* 議事録: 見出し～タブ～工番の見出しの行はスクロールしても上に残す */
+.minutes-top { position: sticky; top: -16px; z-index: 5; margin-top: -16px; padding-top: 16px; background: #e9ebee; display: flex; flex-direction: column; gap: 12px; }
+.minutes-top > .mn-card-head { background: #f5f6f7; border: 1px solid #d5d9de; border-bottom-color: #e3e6ea; border-radius: 8px 8px 0 0; }
+.minutes-top > .mn-tabs + .mn-card-head { border-top: none; border-radius: 0; }
+.minutes-top + .mn-card { margin-top: -12px; border-top: none; border-radius: 0 0 8px 8px; }
+.minutes-top + .mn-card > .mn-row:first-child { border-top: none; }
+
 /* ─── 印刷プレビュー ─────────────────────────────────── */
 #print-view { display: none; position: fixed; inset: 0; background: rgba(42,47,53,.55); z-index: 1100; overflow: auto; padding: 24px 0 40px; }
 #print-view.open { display: block; }

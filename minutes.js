@@ -512,7 +512,11 @@ function renderMinutesMain(meeting, data) {
   if (canEdit) menu.push({ sep: true }, { label: 'この議事録を削除', danger: true, onClick: () => deleteMinutes(meeting) });
   right.appendChild(createMoreMenu(menu));
   head.appendChild(right);
-  main.appendChild(head);
+  // 見出し・案内・タブ・書式のボタンは、スクロールしても上に残す
+  const top = document.createElement('div');
+  top.className = 'minutes-top';
+  top.appendChild(head);
+  main.appendChild(top);
   renderSaveState();
 
   // 過去の議事録を表示しているときの案内
@@ -526,7 +530,7 @@ function renderMinutesMain(meeting, data) {
     b.textContent = '＋ 今日の議事録を作成';
     b.addEventListener('click', () => { if (openNewForm) openNewForm(); });
     banner.appendChild(t); banner.appendChild(b);
-    main.appendChild(banner);
+    top.appendChild(banner);
   }
 
   // 「全体」と工番のタブ（記入がある工番には青い点）
@@ -545,7 +549,7 @@ function renderMinutesMain(meeting, data) {
   };
   tab('全体', '__all', '全体の決定事項', false);
   groups.forEach(g => tab(g.pn, g.pn, `${g.pn}　${g.customer}`, g.slots.some(s => data.notes[s.key])));
-  main.appendChild(tabs);
+  top.appendChild(tabs);
 
   // 選んだタブの欄（見出しの行の右端に書式のボタン）
   const card = (pn, customer, slots) => {
@@ -581,7 +585,9 @@ function renderMinutesMain(meeting, data) {
     return c;
   };
   const g = groups.find(x => x.pn === minutesPn);
-  main.appendChild(g ? card(g.pn, g.customer, g.slots) : card('全体', '', [{ key: '__all', title: '決定事項' }]));
+  const c = g ? card(g.pn, g.customer, g.slots) : card('全体', '', [{ key: '__all', title: '決定事項' }]);
+  top.appendChild(c.firstChild); // 工番の見出しの行（書式のボタン）も上に残す
+  main.appendChild(c);
 }
 
 // ─── 下の議事録欄（ガントの画面） ─────────────────────
