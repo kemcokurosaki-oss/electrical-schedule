@@ -7,7 +7,7 @@ let minutesSelectedDate = null;
 let minutesLoaded = false;
 const minutesCache = {};       // 会議 id → { decisions, notes: { '工番|機械': 本文 } }
 let dockKey = '__all';         // 下の議事録欄で表示しているページ（'__all' か工番）
-let dockMachine = null;        // 工番のページで目立たせる機械（null は無し、'' は工番共通）
+let dockMachine = null;        // 工番のページで表示している機械（'' は工番共通）
 let dockOpen = false;
 const pendingSaves = new Set(); // 保存中の処理（会議を始める前に待つ）
 
@@ -337,31 +337,25 @@ function setDockOpen(open) {
 }
 document.getElementById('dock-toggle').addEventListener('click', () => setDockOpen(!dockOpen));
 
-// ガントで選んだ行の工番のページに切り替え、その機械の欄を目立たせる（machine='' は工番共通、undefined は工番だけ）
+// ガントで選んだ行の工番・機械に切り替える（machine='' は工番共通、省略は工番の最初の機械）
 function setDockKey(pn, machine) {
-  const sameTab = dockKey === (pn || '__all');
-  dockKey = pn || '__all';
-  dockMachine = machine === undefined || machine === null ? null : machine;
-  // 同じ工番のページを表示中なら作り直さず、目立たせる欄だけ変える（入力中の欄を消さない）
-  if (sameTab && dockOpen && document.querySelector('#dock-body .dock-rows')) { highlightDockMachine(true); return; }
+  const page = pn || '__all';
+  const m = machine === undefined || machine === null ? null : machine;
+  if (page === dockKey && (m === null || m === dockMachine)) return; // 同じ欄なら作り直さない（入力中の欄を消さない）
+  dockKey = page;
+  dockMachine = m;
   renderDock();
-}
-
-function highlightDockMachine(scroll) {
-  const rows = document.querySelectorAll('#dock-body .mn-row');
-  rows.forEach(r => {
-    const on = dockMachine !== null && r.dataset.machine === dockMachine;
-    r.classList.toggle('focus', on);
-    if (on && scroll) r.scrollIntoView({ block: 'nearest' });
-  });
 }
 
 async function renderDock() {
   const tabs = document.getElementById('dock-tabs');
+  const mTabs = document.getElementById('dock-machines');
   const body = document.getElementById('dock-body');
   const meeting = dockMeeting();
   if (!meeting) {
     tabs.innerHTML = '';
+    mTabs.innerHTML = '';
+    mTabs.hidden = true;
     body.innerHTML = '';
     const p = document.createElement('div');
     p.className = 'dock-empty';
@@ -373,59 +367,52 @@ async function renderDock() {
   try { data = await loadMeetingData(meeting); }
   catch (e) { body.textContent = '議事録を読み込めませんでした: ' + (e.message || e); return; }
 
-  // タブは「全体」と工番ごと。機械ごとの欄は工番のページの中に並べる
+  // タブは「全体」と工番ごと。工番を選ぶと右に機械の一覧が出て、選んだ機械の欄だけを表示する
   const groups = noteGroups(data);
   const pages = [{ key: '__all', label: '全体', title: '全体の決定事項' },
     ...groups.map(g => ({ key: g.pn, label: g.pn, title: `${g.pn}　${g.customer}`, group: g }))];
   if (!pages.some(s => s.key === dockKey)) dockKey = '__all';
+  const page = pages.find(s => s.key === dockKey);
+  const slots = page.group ? page.group.slots : [];
+  if (page.group && !slots.some(s => s.machine === dockMachine)) dockMachine = slots[0] ? slots[0].machine : null;
 
-  tabs.innerHTML = '';
-  pages.forEach(s => {
+  const segButton = (label, title, active, onClick) => {
     const b = document.createElement('button');
-    b.className = s.key === dockKey ? 'active' : '';
-    b.textContent = s.label;
-    b.title = s.title;
-    b.addEventListener('click', () => { dockKey = s.key; dockMachine = null; if (!dockOpen) setDockOpen(true); else renderDock(); });
-    tabs.appendChild(b);
-  });
+    b.className = active ? 'active' : '';
+    b.textContent = label;
+    b.title = title;
+    b.addEventListener('click', onClick);
+    return b;
+  };
+  tabs.innerHTML = '';
+  pages.forEach(s => tabs.appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
+    dockKey = s.key; dockMachine = null;
+    if (!dockOpen) setDockOpen(true); else renderDock();
+  })));
+  mTabs.innerHTML = '';
+  mTabs.hidden = !page.group;
+  slots.forEach(s => mTabs.appendChild(segButton(s.title, `${page.group.pn}　${s.title}`, s.machine === dockMachine, () => {
+    dockMachine = s.machine;
+    if (!dockOpen) setDockOpen(true); else renderDock();
+  })));
 
   if (!dockOpen) return;
-  const page = pages.find(s => s.key === dockKey);
+  const slot = page.group ? slots.find(s => s.machine === dockMachine) : null;
+  const key = page.group ? (slot ? slot.key : null) : '__all';
   body.innerHTML = '';
   const title = document.createElement('div');
   title.className = 'dock-slot-title';
   title.innerHTML = '<b></b><span></span>';
-  title.querySelector('b').textContent = page.title;
+  title.querySelector('b').textContent = slot ? `${page.title}　${slot.title}` : page.title;
   title.querySelector('span').textContent = meeting.meeting_date === todayStr()
     ? `${fmtMeetingDate(meeting.meeting_date)}　前回の内容を引き継いでいます`
     : `${fmtMeetingDate(meeting.meeting_date)}（前回）${canEdit ? '　「会議を始める」で今日の議事録に引き継ぎます' : ''}`;
-  if (canEdit) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
+  if (canEdit && key) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
-
-  if (!page.group) {
-    const ed = createEditor(meeting, '__all', getBody(data, '__all'));
-    ed.classList.add('dock-editor');
-    body.appendChild(ed);
-    return;
-  }
-  // 工番のページ: 機械ごとの欄を縦に並べる
-  const list = document.createElement('div');
-  list.className = 'dock-rows';
-  page.group.slots.forEach(s => {
-    const row = document.createElement('div');
-    row.className = 'mn-row';
-    row.dataset.machine = s.machine;
-    const t = document.createElement('div');
-    t.className = 'mn-row-title';
-    t.textContent = s.title;
-    const b = document.createElement('div');
-    b.className = 'mn-row-body';
-    b.appendChild(createEditor(meeting, s.key, getBody(data, s.key)));
-    row.appendChild(t); row.appendChild(b);
-    list.appendChild(row);
-  });
-  body.appendChild(list);
-  highlightDockMachine(true);
+  if (!key) return;
+  const ed = createEditor(meeting, key, getBody(data, key));
+  ed.classList.add('dock-editor');
+  body.appendChild(ed);
 }
 
 // ─── 会議の開始・終了 ─────────────────────────────────

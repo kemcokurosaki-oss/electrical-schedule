@@ -225,7 +225,7 @@ function buildGanttData() {
   return { data: tasks, links: [] };
 }
 
-// 行を押したとき: 右にその機械のタスクリスト、下の議事録欄をその工番のページ（その機械の欄を目立たせる）に切り替える
+// 行を押したとき: 右にその機械のタスクリスト、下の議事録欄をその工番・機械の欄に切り替える
 function onGanttRowClick(id) {
   const t = gantt.getTask(id);
   const pn = t.pn;
