@@ -63,16 +63,21 @@ function renderTaskPanel() {
   // 工程の行から開いたとき: その工程に必要な項目の完了数
   const rel = panelCol.rel;
   if (rel && rel.nos.length) {
+    const all = document.createElement('button');
+    all.className = 'link tp-rel-all';
+    all.textContent = '全項目を表示';
+    all.addEventListener('click', () => openTaskPanel(proj.project_number, proj.machine));
+    machines.appendChild(all);
+  }
+  if (rel && rel.nos.length) {
     const rp = relProgressByNos(proj, rel.nos);
     const ready = rp.total > 0 && rp.done === rp.total;
     const box = document.createElement('div');
     box.className = 'tp-rel' + (ready ? ' ready' : '');
-    box.innerHTML = '<div class="tp-rel-top"><b></b><button class="link tp-rel-all">全項目を表示</button></div><span></span>';
-    box.querySelector('b').textContent = `工程「${rel.label}」に必要なタスク　${rp.done}/${rp.total} 完了`;
-    box.querySelector('span').textContent = ready
-      ? 'すべて完了しています。工程表の完了チェックを付けてよい状態です。'
-      : 'この工程に必要なタスクだけを表示しています。すべて完了すると「完了可」になります。';
-    box.querySelector('.tp-rel-all').addEventListener('click', () => openTaskPanel(proj.project_number, proj.machine));
+    box.title = ready ? 'すべて完了しています。工程表の完了チェックを付けてよい状態です。' : '';
+    box.innerHTML = '<b></b><span class="tp-rel-count"></span>';
+    box.querySelector('b').textContent = `「${rel.label}」に必要なタスク`;
+    box.querySelector('.tp-rel-count').textContent = `${rp.done}/${rp.total} 完了`;
     panel.appendChild(box);
   }
 

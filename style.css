@@ -308,13 +308,12 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .tp-machines { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; border-bottom: 1px solid #e3e6ea; background: #f5f6f7; }
 .tp-machine-btn { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 6px; border: 1px solid #c9ced4; background: #fff; color: #2a2f35; cursor: pointer; }
 .tp-machine-btn.active { background: #2a2f35; color: #fff; border-color: #2a2f35; }
-.tp-rel { padding: 8px 14px; background: #fff8e6; border-bottom: 1px solid #f0d08a; display: flex; flex-direction: column; gap: 2px; }
-.tp-rel b { font-size: 12.5px; }
-.tp-rel-top { display: flex; align-items: baseline; gap: 10px; }
-.tp-rel-all { margin-left: auto; font-size: 11.5px; white-space: nowrap; }
-.tp-rel span { font-size: 11.5px; color: #8a5a00; }
+.tp-rel { padding: 8px 14px; background: #fff8e6; border-bottom: 1px solid #f0d08a; display: flex; align-items: baseline; gap: 10px; }
+.tp-rel b { font-size: 12.5px; min-width: 0; }
+.tp-rel-count { margin-left: auto; font-size: 12.5px; font-weight: 700; white-space: nowrap; color: #8a5a00; }
+.tp-rel-all { margin-left: auto; align-self: center; font-size: 11.5px; }
 .tp-rel.ready { background: #dcf1e4; border-color: #a6d8b8; }
-.tp-rel.ready span { color: #1d6b3f; }
+.tp-rel.ready .tp-rel-count { color: #1d6b3f; }
 .tp-scroll { flex: 1; overflow: auto; }
 .tp-table .tl-name { min-width: 0; max-width: 220px; }
 .tl-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
