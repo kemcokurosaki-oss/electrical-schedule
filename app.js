@@ -84,15 +84,17 @@ function applyNavCompact() {
   const saved = localStorage.getItem('denki_nav_compact');
   const compact = saved === null ? window.innerWidth < 1400 : saved === '1';
   document.body.classList.toggle('nav-compact', compact);
-  const t = document.getElementById('nav-toggle');
-  t.textContent = compact ? '»' : '« メニューを縮める';
-  t.title = compact ? 'メニューを広げる' : 'メニューを縮める';
+  document.getElementById('nav-logo').title = compact ? 'メニューを広げる' : '';
 }
-document.getElementById('nav-toggle').addEventListener('click', () => {
-  const compact = document.body.classList.contains('nav-compact');
-  localStorage.setItem('denki_nav_compact', compact ? '0' : '1');
+// 広い表示: 「電気工程表」の右のボタンで縮める。細い表示: アプリのアイコンを押すと広げる
+function setNavCompact(compact) {
+  localStorage.setItem('denki_nav_compact', compact ? '1' : '0');
   applyNavCompact();
   setTimeout(resizeGantt, 0);
+}
+document.getElementById('nav-collapse').addEventListener('click', () => setNavCompact(true));
+document.getElementById('nav-logo').addEventListener('click', () => {
+  if (document.body.classList.contains('nav-compact')) setNavCompact(false);
 });
 window.addEventListener('resize', applyNavCompact);
 

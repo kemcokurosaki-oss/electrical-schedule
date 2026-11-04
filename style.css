@@ -32,14 +32,24 @@ a { color: #2a2f35; }
   padding: 0 10px 12px; overflow-y: auto; overflow-x: hidden;
 }
 .nav-brand {
-  display: flex; align-items: center; gap: 9px; margin: 0 -10px 10px; padding: 0 14px;
+  display: flex; align-items: center; gap: 9px; margin: 0 -10px 10px; padding: 0 10px 0 14px;
   min-height: 62px; border-bottom: 1px solid #3a4048;
 }
 .nav-logo {
-  width: 32px; height: 32px; flex-shrink: 0; border-radius: 7px; background: #e8a317; color: #2a2f35;
-  display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 15px;
+  width: 32px; height: 32px; flex-shrink: 0; padding: 0; border: none; border-radius: 7px; background: none;
+  display: flex; align-items: center; justify-content: center; cursor: default; pointer-events: none;
 }
-.nav-brand-text { display: flex; flex-direction: column; line-height: 1.25; white-space: nowrap; }
+.nav-logo-mark { display: block; }
+.nav-logo-open {
+  display: none; width: 32px; height: 32px; border-radius: 7px; border: 1px solid #4a5159; background: #3d444d; color: #fff;
+  align-items: center; justify-content: center;
+}
+.nav-brand-text { display: flex; flex-direction: column; line-height: 1.25; white-space: nowrap; min-width: 0; }
+.nav-collapse {
+  margin-left: auto; flex-shrink: 0; width: 28px; height: 28px; padding: 0; border-radius: 7px; border: 1px solid #4a5159;
+  background: #353b43; color: #b7bfc8; display: flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.nav-collapse:hover { background: #3d444d; color: #fff; }
 .nav-brand-text b { font-size: 13px; color: #fff; }
 .nav-brand-text small { font-size: 10.5px; color: #9aa3ad; }
 .nav-label { font-size: 10.5px; font-weight: 700; color: #7c858f; letter-spacing: .08em; padding: 12px 10px 4px; }
@@ -65,7 +75,6 @@ a { color: #2a2f35; }
 .np-dot.late { background: #d64545; }
 .np-dot.soon { background: #e8a317; }
 .nav-bottom { margin-top: auto; border-top: 1px solid #3a4048; padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
-.nav-toggle { font-size: 12px; color: #8a929b; }
 
 /* ログイン中のユーザー表示（m365-login.js）を左メニューに合わせる */
 #side-nav #m365_user_chip { margin: 4px 0; padding: 4px 6px; color: #e3e6ea; }
@@ -75,7 +84,12 @@ a { color: #2a2f35; }
 /* 細い表示（画面幅 1400px 未満、または手動） */
 body.nav-compact #side-nav { width: 60px; padding: 0 6px 12px; }
 body.nav-compact .nav-brand { margin: 0 -6px 10px; justify-content: center; padding: 0; }
+/* 細い表示のときはアイコンを押すと開く。マウスを乗せると「開く」のマークに変わる */
+body.nav-compact .nav-logo { cursor: pointer; pointer-events: auto; }
+body.nav-compact .nav-logo:hover .nav-logo-mark { display: none; }
+body.nav-compact .nav-logo:hover .nav-logo-open { display: flex; }
 body.nav-compact .nav-brand-text,
+body.nav-compact .nav-collapse,
 body.nav-compact .nav-label,
 body.nav-compact .nav-full,
 body.nav-compact .nav-dot,
