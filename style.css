@@ -351,7 +351,6 @@ select.st-pill:focus { outline: 2px solid #2a2f35; outline-offset: 1px; }
 .tl-project.collapsed .tl-project-head { border-bottom: none; }
 .tl-pn { font-size: 15px; font-weight: 700; }
 .tl-customer { font-size: 13px; color: #5b636c; }
-.tl-summary { font-size: 12px; color: #5b636c; margin-left: auto; padding-left: 16px; }
 .tl-table { border-collapse: collapse; font-size: 12px; }
 .tp-table { width: 100%; }
 .tl-table th {
@@ -371,7 +370,7 @@ select.st-pill:focus { outline: 2px solid #2a2f35; outline-offset: 1px; }
 .tl-flow { width: 72px; font-size: 11px; color: #7c858f; }
 .tl-machine { width: 112px; text-align: center !important; }
 .tl-machine-name { color: #2a2f35; }
-.tl-machine-progress { font-size: 10.5px; font-weight: 400; }
+.tl-machine-progress { font-size: 10.5px; font-weight: 400; text-align: right; line-height: 1.2; }
 .tl-cell { text-align: center; }
 
 /* ─── 工番管理モーダル ────────────────────────────────── */

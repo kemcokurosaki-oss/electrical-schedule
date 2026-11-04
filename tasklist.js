@@ -28,11 +28,9 @@ function renderTaskListProject({ pn, customer, cols }) {
 
   const head = document.createElement('button');
   head.className = 'tl-project-head';
-  head.innerHTML = '<span class="tl-toggle"></span><span class="tl-pn"></span><span class="tl-customer"></span><span class="tl-summary"></span>';
+  head.innerHTML = '<span class="tl-toggle"></span><span class="tl-pn"></span><span class="tl-customer"></span>';
   head.querySelector('.tl-pn').textContent = pn;
   head.querySelector('.tl-customer').textContent = customer || '';
-  head.querySelector('.tl-summary').textContent =
-    cols.map(c => { const pr = progressOf(c); return `${c.machine || '(機種なし)'} ${pr.done}/${pr.total}`; }).join('　');
   head.addEventListener('click', () => {
     if (tasklistCollapsed.has(pn)) tasklistCollapsed.delete(pn); else tasklistCollapsed.add(pn);
     sec.classList.toggle('collapsed');
@@ -55,7 +53,8 @@ function renderTaskListProject({ pn, customer, cols }) {
     const pr = progressOf(c);
     th.innerHTML = '<div class="tl-machine-name"></div><div class="tl-machine-progress"></div>';
     th.querySelector('.tl-machine-name').textContent = c.machine || '(機種なし)';
-    th.querySelector('.tl-machine-progress').textContent = `完了 ${pr.done}/${pr.total}`;
+    th.querySelector('.tl-machine-progress').textContent = `${pr.done}/${pr.total}`;
+    th.title = `タスク ${pr.total} 項目のうち ${pr.done} 項目が完了`;
     htr.appendChild(th);
   });
   thead.appendChild(htr);

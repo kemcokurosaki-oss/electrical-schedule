@@ -51,10 +51,9 @@ function renderTaskPanel() {
   const machines = document.createElement('div');
   machines.className = 'tp-machines';
   cols.forEach(c => {
-    const pr = progressOf(c);
     const b = document.createElement('button');
     b.className = 'tp-machine-btn' + (c === proj ? ' active' : '');
-    b.textContent = `${c.machine || '(機種なし)'}　${pr.done}/${pr.total}`;
+    b.textContent = c.machine || '(機種なし)';
     b.addEventListener('click', () => openTaskPanel(c.project_number, c.machine));
     machines.appendChild(b);
   });
@@ -86,7 +85,11 @@ function renderTaskPanel() {
   const table = document.createElement('table');
   table.className = 'tl-table tp-table';
   table.innerHTML = '<thead><tr><th class="tl-no">No.</th><th class="tl-name">項目</th><th class="tl-flow">流れ</th><th class="tl-machine"></th></tr></thead>';
-  table.querySelector('th.tl-machine').textContent = proj.machine || '(機種なし)';
+  // 状態の列の見出しは、この機械のタスクリスト全体の完了数（完了／対象）
+  const pr = progressOf(proj);
+  const thM = table.querySelector('th.tl-machine');
+  thM.textContent = `${pr.done}/${pr.total}`;
+  thM.title = `${proj.machine || '(機種なし)'} のタスク ${pr.total} 項目のうち ${pr.done} 項目が完了`;
   const tbody = document.createElement('tbody');
   const filtered = rel && rel.nos.length;
   PROCESSES.forEach(proc => {
