@@ -1,7 +1,7 @@
 // ─── 議事録（電気工程会議） ─────────────────────────────
 // 会議日ごとに「全体の決定事項」＋「工番の機械ごとの欄」（機械が合わない工程がある工番は「工番共通」の欄も）。
 // 本文は書式付き（黒・赤・青・取り消し線）。開くと最新の議事録を表示し、書き込むと表示中の議事録に自動で保存する。
-// 会議の分は「＋コピーして新規作成」で、表示中の内容を色や取り消し線ごと全部コピーした新しい日付の議事録を先に作ってから書く。
+// 会議の分は「＋ 新しい議事録」で、表示中の内容を色や取り消し線ごと全部コピーした新しい日付の議事録を先に作ってから書く。
 // 今日より前の議事録に書こうとしたら、直接直すか確認する。
 // denki_meetings（会議日・決定事項）／denki_meeting_notes（工番＋機械ごとの欄。machine='' は工番共通）
 let minutesList = [];          // [{ id, meeting_date }] 新しい順
@@ -55,7 +55,7 @@ function meetingByDate(dateStr) {
   return minutesList.find(m => m.meeting_date === dateStr) || null;
 }
 
-let dockPinId = null;          // 「＋コピーして新規作成」で作った回の id（下の議事録欄はこの回を出す）
+let dockPinId = null;          // 「＋ 新しい議事録」で作った回の id（下の議事録欄はこの回を出す）
 const pastEditOk = new Set();  // 過去の議事録を直接直すと確認済みの回の id
 
 // 下の議事録欄に出す回: 新しく作った回 → 今日の議事録 → 一番新しい回 → （まだ1件も無ければ）空の議事録
@@ -73,7 +73,7 @@ function shownMeeting() {
 // 見出しの横の注意書き: 今日より前の議事録を表示しているとき
 function pastNoteText(meeting) {
   if (!canEdit || !meeting || !meeting.id || meeting.meeting_date >= todayStr()) return '';
-  return `過去（${fmtMeetingDate(meeting.meeting_date)}）の議事録です。今日の会議の分は「＋コピーして新規作成」で作ってから書いてください`;
+  return `過去（${fmtMeetingDate(meeting.meeting_date)}）の議事録です。今日の会議の分は「＋ 新しい議事録」で作ってから書いてください`;
 }
 
 // 表示中の議事録の内容をコピーして、選んだ日付の議事録を作り、表示をその回に切り替える
@@ -96,8 +96,8 @@ async function copyMeetingTo(src, dateStr) {
   return m;
 }
 
-// 「＋コピーして新規作成」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
-// side=true は議事録の画面の左の欄に置く大きい形（「＋ 新しい議事録」）
+// 「＋ 新しい議事録」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
+// side=true は議事録の画面の左の欄に置く大きい形、false は下の議事録欄に置く1行の形（中身は同じ）
 let openNewForm = null; // 議事録の画面の「＋ 新しい議事録」の欄を開く（過去の議事録の案内から呼ぶ）
 function createNewDateControls(side) {
   const wrap = document.createElement('span');
@@ -106,7 +106,7 @@ function createNewDateControls(side) {
   closed.className = 'new-date-closed';
   const open = document.createElement('button');
   open.className = side ? 'btn btn-dark new-open' : 'btn';
-  open.textContent = side ? '＋ 新しい議事録' : '＋コピーして新規作成';
+  open.textContent = '＋ 新しい議事録';
   open.title = '表示中の議事録の内容をコピーして、選んだ日付の新しい議事録を作ります';
   closed.appendChild(open);
   if (side) {
@@ -125,7 +125,7 @@ function createNewDateControls(side) {
   ok.className = 'btn btn-dark btn-save';
   ok.textContent = '作成';
   const cancel = document.createElement('button');
-  cancel.className = side ? 'btn btn-save' : 'link';
+  cancel.className = 'btn btn-save';
   cancel.textContent = 'やめる';
   const from = document.createElement('span');
   from.className = 'new-hint';
@@ -145,17 +145,17 @@ function createNewDateControls(side) {
     ok.disabled = false;
     if (m) show(false);
   });
+  const label = document.createElement('span');
+  label.className = 'new-date-form-label';
+  label.textContent = '会議の日付';
   if (side) {
-    const label = document.createElement('span');
-    label.className = 'new-date-form-label';
-    label.textContent = '会議の日付';
     const btns = document.createElement('span');
     btns.className = 'new-date-form-btns';
     btns.appendChild(ok); btns.appendChild(cancel);
     form.appendChild(label); form.appendChild(di); form.appendChild(from); form.appendChild(btns);
     openNewForm = () => show(true);
   } else {
-    form.appendChild(di); form.appendChild(ok); form.appendChild(cancel);
+    form.appendChild(label); form.appendChild(di); form.appendChild(ok); form.appendChild(cancel); form.appendChild(from);
   }
   wrap.appendChild(closed); wrap.appendChild(form);
   return wrap;
@@ -174,7 +174,7 @@ function renderSaveState() {
   const note = pastNoteText(shownMeeting());
   document.querySelectorAll('.save-note').forEach(el => { el.textContent = note; el.hidden = !note; });
 }
-// withNew=false: 「＋コピーして新規作成」を付けない（議事録の画面では左の欄に置く）
+// withNew=false: 「＋ 新しい議事録」を付けない（議事録の画面では左の欄に置く）
 function createSaveControls(withNew = true) {
   const wrap = document.createElement('span');
   wrap.className = 'save-controls';
