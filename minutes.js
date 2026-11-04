@@ -45,7 +45,7 @@ function splitKey(key) {
 
 // ─── 読み込み ─────────────────────────────────────────
 async function loadMinutesList() {
-  const res = await sb.from('denki_meetings').select('id, meeting_date').order('meeting_date', { ascending: false });
+  const res = await sb.from('denki_meetings').select('id, meeting_date, updated_at').order('meeting_date', { ascending: false });
   if (res.error) { console.warn('議事録の一覧を読み込めませんでした', res.error); minutesList = []; return false; }
   minutesList = res.data;
   return true;
@@ -97,13 +97,24 @@ async function copyMeetingTo(src, dateStr) {
 }
 
 // 「＋コピーして新規作成」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
-function createNewDateControls() {
+// side=true は議事録の画面の左の欄に置く大きい形（「＋ 新しい議事録」）
+let openNewForm = null; // 議事録の画面の「＋ 新しい議事録」の欄を開く（過去の議事録の案内から呼ぶ）
+function createNewDateControls(side) {
   const wrap = document.createElement('span');
-  wrap.className = 'new-date-controls';
+  wrap.className = 'new-date-controls' + (side ? ' side' : '');
+  const closed = document.createElement('span');
+  closed.className = 'new-date-closed';
   const open = document.createElement('button');
-  open.className = 'btn';
-  open.textContent = '＋コピーして新規作成';
+  open.className = side ? 'btn btn-dark new-open' : 'btn';
+  open.textContent = side ? '＋ 新しい議事録' : '＋コピーして新規作成';
   open.title = '表示中の議事録の内容をコピーして、選んだ日付の新しい議事録を作ります';
+  closed.appendChild(open);
+  if (side) {
+    const hint = document.createElement('span');
+    hint.className = 'new-hint';
+    hint.textContent = '表示中の内容（色・取り消し線も）を引き継いで作成します';
+    closed.appendChild(hint);
+  }
   const form = document.createElement('span');
   form.className = 'new-date-form';
   form.hidden = true;
@@ -114,9 +125,18 @@ function createNewDateControls() {
   ok.className = 'btn btn-dark btn-save';
   ok.textContent = '作成';
   const cancel = document.createElement('button');
-  cancel.className = 'link';
+  cancel.className = side ? 'btn btn-save' : 'link';
   cancel.textContent = 'やめる';
-  const show = on => { open.hidden = on; form.hidden = !on; if (on) { di.value = todayStr(); di.focus(); } };
+  const from = document.createElement('span');
+  from.className = 'new-hint';
+  const show = on => {
+    closed.hidden = on; form.hidden = !on;
+    if (on) {
+      const src = shownMeeting();
+      from.textContent = src && src.id ? `${fmtMeetingDate(src.meeting_date)} の内容を引き継ぎます` : '';
+      di.value = todayStr(); di.focus();
+    }
+  };
   open.addEventListener('click', () => show(true));
   cancel.addEventListener('click', () => show(false));
   ok.addEventListener('click', async () => {
@@ -125,8 +145,19 @@ function createNewDateControls() {
     ok.disabled = false;
     if (m) show(false);
   });
-  form.appendChild(di); form.appendChild(ok); form.appendChild(cancel);
-  wrap.appendChild(open); wrap.appendChild(form);
+  if (side) {
+    const label = document.createElement('span');
+    label.className = 'new-date-form-label';
+    label.textContent = '会議の日付';
+    const btns = document.createElement('span');
+    btns.className = 'new-date-form-btns';
+    btns.appendChild(ok); btns.appendChild(cancel);
+    form.appendChild(label); form.appendChild(di); form.appendChild(from); form.appendChild(btns);
+    openNewForm = () => show(true);
+  } else {
+    form.appendChild(di); form.appendChild(ok); form.appendChild(cancel);
+  }
+  wrap.appendChild(closed); wrap.appendChild(form);
   return wrap;
 }
 
@@ -138,15 +169,16 @@ function setSaveState(state) {
 }
 function renderSaveState() {
   const hm = savedAt ? `${savedAt.getHours()}:${String(savedAt.getMinutes()).padStart(2, '0')}` : '';
-  const text = { dirty: '未保存', saving: '保存中…', saved: `保存しました ${hm}`, error: '保存できませんでした' }[saveState] || '';
+  const text = { dirty: '● 未保存の変更あり', saving: '… 保存中', saved: `✓ 保存しました ${hm}`, error: '× 保存できませんでした' }[saveState] || '';
   document.querySelectorAll('.save-status').forEach(el => { el.textContent = text; el.dataset.state = saveState || ''; });
   const note = pastNoteText(shownMeeting());
   document.querySelectorAll('.save-note').forEach(el => { el.textContent = note; el.hidden = !note; });
 }
-function createSaveControls() {
+// withNew=false: 「＋コピーして新規作成」を付けない（議事録の画面では左の欄に置く）
+function createSaveControls(withNew = true) {
   const wrap = document.createElement('span');
   wrap.className = 'save-controls';
-  wrap.appendChild(createNewDateControls());
+  if (withNew) wrap.appendChild(createNewDateControls());
   const st = document.createElement('span');
   st.className = 'save-status';
   const b = document.createElement('button');
@@ -267,7 +299,8 @@ function createEditor(meeting, key, body) {
 }
 
 // 書式のボタン（文字を選んでから押す）
-const RT_COLORS = [['黒', '#2a2f35'], ['赤', '#c03030'], ['青', '#1f5fa8']];
+// 文字の色は赤（訂正）と青（追記）だけ。黒に戻すときは「書式解除」
+const RT_COLORS = [['赤＝訂正', '#c03030'], ['青＝追記', '#1f5fa8']];
 function createRichToolbar() {
   const bar = document.createElement('div');
   bar.className = 'rt-tools';
@@ -285,39 +318,27 @@ function createRichToolbar() {
     b.addEventListener('mousedown', e => { e.preventDefault(); onDown(e); }); // 入力欄の選択を外さない
     return b;
   };
+  const hint = document.createElement('span');
+  hint.className = 'rt-hint';
+  hint.textContent = '文字を選んでから押す';
+  bar.appendChild(hint);
 
-  // 文字の色（Excel と同じ「A に色の線」のボタン。押すと色を選べる）
-  const wrap = document.createElement('span');
-  wrap.className = 'rt-color';
-  const pop = document.createElement('div');
-  pop.className = 'rt-color-pop';
-  pop.hidden = true;
-  const close = e => { if (!wrap.contains(e.target)) { pop.hidden = true; document.removeEventListener('mousedown', close); } };
-  const colorBtn = button('color', '文字の色', () => {
-    pop.hidden = !pop.hidden;
-    if (!pop.hidden) document.addEventListener('mousedown', close);
-    else document.removeEventListener('mousedown', close);
-  });
-  colorBtn.innerHTML = '<span class="rt-a">A</span><span class="rt-a-bar"></span><span class="rt-caret">▾</span>';
+  const colors = document.createElement('span');
+  colors.className = 'rt-colors';
   RT_COLORS.forEach(([label, color]) => {
-    const item = button('rt-color-item', label, () => {
-      run('foreColor', color);
-      pop.hidden = true;
-      document.removeEventListener('mousedown', close);
-    });
-    item.innerHTML = '<span class="rt-swatch"></span><span></span>';
-    item.firstChild.style.background = color;
-    item.lastChild.textContent = label;
-    pop.appendChild(item);
+    const b = button('rt-color-btn', `文字の色：${label}`, () => run('foreColor', color));
+    b.innerHTML = '<span class="rt-swatch"></span><span></span>';
+    b.style.color = color;
+    b.firstChild.style.background = color;
+    b.lastChild.textContent = label;
+    colors.appendChild(b);
   });
-  wrap.appendChild(colorBtn);
-  wrap.appendChild(pop);
-  bar.appendChild(wrap);
+  bar.appendChild(colors);
 
   const strike = button('strike', '取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
-  strike.textContent = 'abc';
+  strike.innerHTML = '<span class="rt-s">abc</span> 取り消し線';
   bar.appendChild(strike);
-  const clear = button('clear', '色と取り消し線を外す', () => run('removeFormat'));
+  const clear = button('clear', '色と取り消し線を外す（黒に戻す）', () => run('removeFormat'));
   clear.textContent = '書式解除';
   bar.appendChild(clear);
   return bar;
@@ -340,6 +361,8 @@ async function showMinutes() {
 }
 
 function renderMinutesList() {
+  const nw = document.getElementById('minutes-new');
+  if (canEdit && !nw.firstChild) nw.appendChild(createNewDateControls(true));
   const list = document.getElementById('minutes-list');
   list.innerHTML = '';
   if (minutesList.length === 0) {
@@ -358,7 +381,14 @@ function renderMinutesList() {
     }
     const b = document.createElement('button');
     b.className = 'minutes-date-btn' + (m.meeting_date === minutesSelectedDate ? ' active' : '');
-    b.textContent = fmtMeetingDate(m.meeting_date);
+    b.innerHTML = '<span></span>';
+    b.firstChild.textContent = fmtMeetingDate(m.meeting_date);
+    if (m.meeting_date === todayStr()) {
+      const t = document.createElement('span');
+      t.className = 'minutes-today';
+      t.textContent = '今日';
+      b.appendChild(t);
+    }
     b.addEventListener('click', () => selectMinutes(m.meeting_date));
     list.appendChild(b);
   });
@@ -373,6 +403,7 @@ async function selectMinutes(dateStr) {
   const meeting = meetingByDate(dateStr);
   if (!meeting) {
     main.innerHTML = '';
+    renderMinutesMeta(null);
     const p = document.createElement('div');
     p.className = 'minutes-empty';
     p.textContent = `${fmtMeetingDate(dateStr)} の議事録はありません`;
@@ -401,95 +432,154 @@ async function selectMinutes(dateStr) {
 function richLegend() {
   const s = document.createElement('span');
   s.className = 'rich-legend';
-  s.innerHTML = '<span>黒＝前回のまま</span><span class="red">赤＝訂正</span><span class="blue">青＝追記</span>';
+  s.innerHTML = '<span class="red">赤＝訂正</span><span class="blue">青＝追記</span>';
   return s;
+}
+
+// 上のバーの「引き継ぎ元」「最終更新」（議事録の画面のときだけ表示）
+function fmtStamp(iso) {
+  const d = new Date(iso);
+  return `${d.getMonth() + 1}/${d.getDate()} ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`;
+}
+function renderMinutesMeta(meeting) {
+  const el = document.getElementById('minutes-meta');
+  el.innerHTML = '';
+  if (!meeting || !meeting.id) return;
+  const item = (label, value) => {
+    const s = document.createElement('span');
+    s.className = 'bar-meta-item';
+    s.innerHTML = '<span></span><b></b>';
+    s.firstChild.textContent = label;
+    s.lastChild.textContent = value;
+    el.appendChild(s);
+  };
+  const prev = minutesList.find(m => m.meeting_date < meeting.meeting_date); // 一覧は新しい順なので、最初に見つかった回が前回
+  item('引き継ぎ元', prev ? `前回 ${fmtMeetingDate(prev.meeting_date)}` : 'なし（最初の議事録）');
+  if (meeting.updated_at) item('最終更新', fmtStamp(meeting.updated_at));
+}
+
+// 「⋯」のメニュー（印刷・PDF と削除）
+function createMoreMenu(items) {
+  const wrap = document.createElement('span');
+  wrap.className = 'more-menu';
+  const btn = document.createElement('button');
+  btn.className = 'btn btn-more';
+  btn.textContent = '⋯';
+  btn.title = 'その他の操作';
+  const pop = document.createElement('div');
+  pop.className = 'more-pop';
+  pop.hidden = true;
+  const close = e => { if (!wrap.contains(e.target)) { pop.hidden = true; document.removeEventListener('mousedown', close); } };
+  btn.addEventListener('click', () => {
+    pop.hidden = !pop.hidden;
+    if (!pop.hidden) document.addEventListener('mousedown', close);
+    else document.removeEventListener('mousedown', close);
+  });
+  items.forEach(it => {
+    if (it.sep) { const d = document.createElement('div'); d.className = 'more-sep'; pop.appendChild(d); return; }
+    const b = document.createElement('button');
+    b.className = 'more-item' + (it.danger ? ' danger' : '');
+    b.textContent = it.label;
+    b.addEventListener('click', () => { pop.hidden = true; document.removeEventListener('mousedown', close); it.onClick(); });
+    pop.appendChild(b);
+  });
+  wrap.appendChild(btn); wrap.appendChild(pop);
+  return wrap;
 }
 
 function renderMinutesMain(meeting, data) {
   const main = document.getElementById('minutes-main');
   main.innerHTML = '';
+  renderMinutesMeta(meeting);
+  const isPast = meeting.meeting_date < todayStr();
 
+  // 見出し: 左に日付、右に保存（よく使う）と「⋯」（印刷・PDF、削除）
   const head = document.createElement('div');
   head.className = 'minutes-head';
   const h2 = document.createElement('h2');
   h2.textContent = `${fmtMeetingDate(meeting.meeting_date)}　電気工程会議`;
   head.appendChild(h2);
+  if (isPast) {
+    const tag = document.createElement('span');
+    tag.className = 'past-tag';
+    tag.textContent = '過去の議事録';
+    head.appendChild(tag);
+  }
   const right = document.createElement('div');
   right.className = 'minutes-head-right';
-  if (canEdit) right.appendChild(createSaveControls());
-  const pr = document.createElement('button');
-  pr.className = 'btn';
-  pr.textContent = '印刷・PDF';
-  pr.addEventListener('click', async () => { await flushEditors(); openPrint(meeting); });
-  right.appendChild(pr);
-  if (canEdit) {
-    const del = document.createElement('button');
-    del.className = 'btn btn-danger';
-    del.textContent = '削除';
-    del.title = 'この議事録を削除';
-    del.addEventListener('click', () => deleteMinutes(meeting));
-    right.appendChild(del);
-  }
+  if (canEdit) right.appendChild(createSaveControls(false));
+  const menu = [{ label: '印刷・PDF', onClick: async () => { await flushEditors(); openPrint(meeting); } }];
+  if (canEdit) menu.push({ sep: true }, { label: 'この議事録を削除', danger: true, onClick: () => deleteMinutes(meeting) });
+  right.appendChild(createMoreMenu(menu));
   head.appendChild(right);
   main.appendChild(head);
-  const note = document.createElement('div');
-  note.className = 'save-note carry-banner';
-  main.appendChild(note);
   renderSaveState();
 
+  // 過去の議事録を表示しているときの案内
+  if (canEdit && isPast) {
+    const banner = document.createElement('div');
+    banner.className = 'carry-banner past-banner';
+    const t = document.createElement('span');
+    t.textContent = `${fmtMeetingDate(meeting.meeting_date)} の議事録を表示しています。今日の会議の分は、新しい議事録を作ってから書いてください。`;
+    const b = document.createElement('button');
+    b.className = 'btn btn-dark btn-save';
+    b.textContent = '＋ 今日の議事録を作成';
+    b.addEventListener('click', () => { if (openNewForm) openNewForm(); });
+    banner.appendChild(t); banner.appendChild(b);
+    main.appendChild(banner);
+  }
+
+  // 「全体」と工番のタブ（記入がある工番には青い点）
+  const groups = noteGroups(data);
+  if (minutesPn !== '__all' && !groups.some(g => g.pn === minutesPn)) minutesPn = '__all';
+  const tabs = document.createElement('div');
+  tabs.className = 'mn-tabs';
+  const tab = (label, key, title, has) => {
+    const b = document.createElement('button');
+    b.className = 'mn-tab' + (key === minutesPn ? ' active' : '');
+    b.textContent = label;
+    b.title = title;
+    if (has) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
+    b.addEventListener('click', async () => { await flushEditors(); minutesPn = key; renderMinutesMain(meeting, data); });
+    tabs.appendChild(b);
+  };
+  tab('全体', '__all', '全体の決定事項', false);
+  groups.forEach(g => tab(g.pn, g.pn, `${g.pn}　${g.customer}`, g.slots.some(s => data.notes[s.key])));
+  main.appendChild(tabs);
+
+  // 選んだタブの欄（見出しの行の右端に書式のボタン）
   const card = (pn, customer, slots) => {
     const c = document.createElement('div');
     c.className = 'mn-card';
     const h = document.createElement('div');
     h.className = 'mn-card-head';
-    h.innerHTML = '<b></b><span></span>';
-    h.querySelector('b').textContent = pn;
-    h.querySelector('span').textContent = customer || '';
-    // 色の説明と書式のボタンは、全体・工番の見出しの行の右端に置く
-    const right = document.createElement('div');
-    right.className = 'mn-card-tools';
-    right.appendChild(richLegend());
-    if (canEdit) right.appendChild(createRichToolbar());
-    h.appendChild(right);
+    const ttl = document.createElement('div');
+    ttl.className = 'mn-card-title';
+    ttl.innerHTML = '<b></b><span></span>';
+    ttl.querySelector('b').textContent = pn;
+    ttl.querySelector('span').textContent = customer || '';
+    h.appendChild(ttl);
+    h.appendChild(canEdit ? createRichToolbar() : richLegend());
     c.appendChild(h);
     slots.forEach(s => {
       const row = document.createElement('div');
       row.className = 'mn-row';
       const t = document.createElement('div');
       t.className = 'mn-row-title';
-      t.textContent = s.title;
+      t.innerHTML = '<span></span>';
+      t.firstChild.textContent = s.title;
+      const hint = s.key === '__all' ? '会議全体で決まったこと' : s.machine === '' ? '機械が合わない工程' : '';
+      if (hint) { const hs = document.createElement('span'); hs.className = 'mn-row-hint'; hs.textContent = hint; t.appendChild(hs); }
       const b = document.createElement('div');
       b.className = 'mn-row-body';
-      b.appendChild(createEditor(meeting, s.key, getBody(data, s.key)));
+      const ed = createEditor(meeting, s.key, getBody(data, s.key));
+      ed.classList.add(s.key === '__all' ? 'lg' : s.machine === '' ? 'sm' : 'md');
+      b.appendChild(ed);
       row.appendChild(t); row.appendChild(b);
       c.appendChild(row);
     });
     return c;
   };
-  // 「全体」と工番を切り替えて、選んだ工番の機械ごとの欄を並べる
-  const groups = noteGroups(data);
-  if (minutesPn !== '__all' && !groups.some(g => g.pn === minutesPn)) minutesPn = '__all';
-  const pick = document.createElement('div');
-  pick.className = 'mn-pick';
-  const seg = () => { const d = document.createElement('div'); d.className = 'seg sm'; pick.appendChild(d); return d; };
-  const pickBtn = (parent, label, key) => {
-    const b = document.createElement('button');
-    b.className = key === minutesPn ? 'active' : '';
-    b.textContent = label;
-    b.addEventListener('click', async () => { await flushEditors(); minutesPn = key; renderMinutesMain(meeting, data); });
-    parent.appendChild(b);
-  };
-  pickBtn(seg(), '全体', '__all');
-  if (groups.length) {
-    const s = seg();
-    const l = document.createElement('span');
-    l.className = 'dock-seg-label';
-    l.textContent = '工番';
-    s.appendChild(l);
-    groups.forEach(g => pickBtn(s, g.pn, g.pn));
-  }
-  main.appendChild(pick);
-
   const g = groups.find(x => x.pn === minutesPn);
   main.appendChild(g ? card(g.pn, g.customer, g.slots) : card('全体', '', [{ key: '__all', title: '決定事項' }]));
 }
@@ -616,7 +706,7 @@ async function createMinutes(dateStr, source) {
     catch (e) { minutesError(e); return null; }
   }
   const email = await currentEmail();
-  const row = { meeting_date: dateStr, decisions: prevData ? prevData.decisions : null, updated_by: email };
+  const row = { meeting_date: dateStr, decisions: prevData ? prevData.decisions : null, updated_at: new Date().toISOString(), updated_by: email };
   const { data, error } = await sb.from('denki_meetings').insert(row).select('id').single();
   if (error) { minutesError(error); return null; }
 
@@ -636,6 +726,11 @@ async function createMinutes(dateStr, source) {
 
 async function saveBody(meetingId, key, body) {
   const ok = key === '__all' ? await saveDecisions(meetingId, body) : await saveNote(meetingId, ...splitKey(key), body);
+  if (ok) { // 上のバーの「最終更新」を新しくする
+    const m = minutesList.find(x => x.id === meetingId);
+    if (m) m.updated_at = new Date().toISOString();
+    if (currentView === 'minutes' && m && m.meeting_date === minutesSelectedDate) renderMinutesMeta(m);
+  }
   if (ok && minutesCache[meetingId]) {
     if (key === '__all') minutesCache[meetingId].decisions = body;
     else if (body) minutesCache[meetingId].notes[key] = body;
@@ -663,6 +758,9 @@ async function saveNote(meetingId, pn, machine, body) {
       .eq('meeting_id', meetingId).eq('project_number', pn).eq('machine', machine);
   }
   if (res.error) { minutesError(res.error); return false; }
+  // 工番の欄を直したときも、議事録の回の「最終更新」を新しくする
+  const t = await sb.from('denki_meetings').update({ updated_at: new Date().toISOString(), updated_by: await currentEmail() }).eq('id', meetingId);
+  if (t.error) console.warn('最終更新の時刻を記録できませんでした', t.error);
   return true;
 }
 

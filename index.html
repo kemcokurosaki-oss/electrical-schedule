@@ -11,7 +11,7 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261104u">
+  <link rel="stylesheet" href="style.css?v=20261104v">
 </head>
 <body data-view="gantt">
 
@@ -43,6 +43,7 @@
       <div class="bar-title"><span id="view-title">ガントチャート</span><span id="view-sub"></span></div>
       <button class="lamp late" id="late-lamp" title="遅れている工程だけを表示"><span class="lamp-dot"></span>遅れ <span id="late-count">0</span>件</button>
       <button class="lamp soon" id="soon-lamp"><span class="lamp-dot"></span>注意 <span id="soon-count">0</span>件</button>
+      <div class="bar-meta" id="minutes-meta"></div><!-- 議事録の画面だけ（引き継ぎ元・最終更新） -->
       <div class="bar-right">
         <div class="seg">
           <button class="active" id="zoom-day">日単位</button>
@@ -91,7 +92,7 @@
             <div class="seg sm" id="dock-all"></div>
             <div class="seg sm dock-tabs" id="dock-tabs"></div>
             <div class="seg sm dock-tabs dock-machines" id="dock-machines" hidden></div>
-            <span class="rich-legend"><span>黒＝前回のまま</span><span class="red">赤＝訂正</span><span class="blue">青＝追記</span></span>
+            
             <span id="dock-save"></span>
           </div>
           <div class="dock-body" id="dock-body"></div>
@@ -110,7 +111,8 @@
     <!-- 議事録ビュー -->
     <div id="view-minutes" class="view">
       <aside id="minutes-side">
-        <label class="minutes-search">日付で検索<input type="date" id="minutes-date"></label>
+        <div id="minutes-new"></div>
+        <label class="minutes-search">日付で探す<input type="date" id="minutes-date"></label>
         <div id="minutes-list"></div>
       </aside>
       <section id="minutes-main"></section>
@@ -158,7 +160,7 @@
 <script src="taskpanel.js?v=20261104u"></script>
 <script src="gantt.js?v=20261104u"></script>
 <script src="manage.js?v=20261104u"></script>
-<script src="minutes.js?v=20261104u"></script>
+<script src="minutes.js?v=20261104v"></script>
 <script src="app.js?v=20261104u"></script>
 </body>
 </html>
