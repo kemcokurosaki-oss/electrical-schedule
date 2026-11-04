@@ -195,6 +195,15 @@ function createSaveControls() {
   b.title = '入力欄から離れたときにも自動で保存します';
   b.addEventListener('click', async () => {
     await flushEditors();
+    // 保存先の日付が表示中の回と違うときは、書き込みが無くても表示中の内容でその日付の議事録を作る
+    const shown = shownMeeting();
+    if (shown && (!shown.id || saveDate !== shown.meeting_date)) {
+      setSaveState('saving');
+      if (!(await resolveTarget(shown))) { setSaveState('error'); return; }
+      await Promise.all([...pendingSaves]);
+      setSaveState(document.querySelector('.rt-editor.dirty') ? 'dirty' : 'saved');
+      return;
+    }
     if (!document.querySelector('.rt-editor.dirty') && saveState !== 'error') setSaveState('saved');
   });
   wrap.appendChild(st);
