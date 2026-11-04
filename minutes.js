@@ -354,6 +354,7 @@ async function renderDock() {
   const meeting = dockMeeting();
   if (!meeting) {
     tabs.innerHTML = '';
+    document.getElementById('dock-all').innerHTML = '';
     mTabs.innerHTML = '';
     mTabs.hidden = true;
     body.innerHTML = '';
@@ -391,9 +392,13 @@ async function renderDock() {
     return l;
   };
   tabs.innerHTML = '';
+  // 「全体」と工番は別の枠に分ける
+  const allTab = document.getElementById('dock-all');
+  allTab.innerHTML = '';
+  tabs.hidden = pages.length < 2;
   pages.forEach((s, i) => {
-    if (i === 1) tabs.appendChild(segLabel('工番')); // 「全体」と工番の間に見出し
-    tabs.appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
+    if (i === 1) tabs.appendChild(segLabel('工番'));
+    (i === 0 ? allTab : tabs).appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
       dockKey = s.key; dockMachine = null;
       if (!dockOpen) setDockOpen(true); else renderDock();
     }));
