@@ -384,13 +384,23 @@ async function renderDock() {
     b.addEventListener('click', onClick);
     return b;
   };
+  const segLabel = text => {
+    const l = document.createElement('span');
+    l.className = 'dock-seg-label';
+    l.textContent = text;
+    return l;
+  };
   tabs.innerHTML = '';
-  pages.forEach(s => tabs.appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
-    dockKey = s.key; dockMachine = null;
-    if (!dockOpen) setDockOpen(true); else renderDock();
-  })));
+  pages.forEach((s, i) => {
+    if (i === 1) tabs.appendChild(segLabel('工番')); // 「全体」と工番の間に見出し
+    tabs.appendChild(segButton(s.label, s.title, s.key === dockKey, () => {
+      dockKey = s.key; dockMachine = null;
+      if (!dockOpen) setDockOpen(true); else renderDock();
+    }));
+  });
   mTabs.innerHTML = '';
   mTabs.hidden = !page.group;
+  if (page.group) mTabs.appendChild(segLabel('機械'));
   slots.forEach(s => mTabs.appendChild(segButton(s.title, `${page.group.pn}　${s.title}`, s.machine === dockMachine, () => {
     dockMachine = s.machine;
     if (!dockOpen) setDockOpen(true); else renderDock();
