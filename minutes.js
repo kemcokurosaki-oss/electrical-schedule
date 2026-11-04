@@ -1,8 +1,8 @@
 // ─── 議事録（電気工程会議） ─────────────────────────────
 // 会議日ごとに「全体の決定事項」＋「工番の機械ごとの欄」（機械が合わない工程がある工番は「工番共通」の欄も）。
-// 本文は書式付き（黒・赤・青・取り消し線）。開くと最新の議事録を表示し、「保存先の日付」（最初は今日）の議事録として保存する。
-// 保存先の日付が表示中の回と同じならその回を直す。違う日付なら、表示中の内容を色や取り消し線ごと全部引き継いだ
-// その日付の議事録を書き込んだ時点で作る（すでにある日付なら上書きの確認をする）。
+// 本文は書式付き（黒・赤・青・取り消し線）。開くと最新の議事録を表示し、書き込むと表示中の議事録に自動で保存する。
+// 会議の分は「新しい日付で作成」で、表示中の内容を色や取り消し線ごと全部コピーした新しい日付の議事録を先に作ってから書く。
+// 今日より前の議事録に書こうとしたら、直接直すか確認する。
 // denki_meetings（会議日・決定事項）／denki_meeting_notes（工番＋機械ごとの欄。machine='' は工番共通）
 let minutesList = [];          // [{ id, meeting_date }] 新しい順
 let minutesSelectedDate = null;
@@ -55,14 +55,12 @@ function meetingByDate(dateStr) {
   return minutesList.find(m => m.meeting_date === dateStr) || null;
 }
 
-let sessionCopyId = null;      // この画面で書き込んで作った議事録の id（日付を変えると、この回の日付を付け替える）
-let saveDate = null;           // 保存先の日付
-let saveDateFor;               // saveDate を決めたときに表示していた回の id
-let overwriteOk = null;        // 上書きしてよいと確認済みの日付
+let dockPinId = null;          // 「新しい日付で作成」で作った回の id（下の議事録欄はこの回を出す）
+const pastEditOk = new Set();  // 過去の議事録を直接直すと確認済みの回の id
 
-// 下の議事録欄に出す回: この画面で作った回 → 今日の議事録 → 一番新しい回 → （まだ1件も無ければ）空の議事録
+// 下の議事録欄に出す回: 新しく作った回 → 今日の議事録 → 一番新しい回 → （まだ1件も無ければ）空の議事録
 function dockMeeting() {
-  return (sessionCopyId && minutesList.find(m => m.id === sessionCopyId))
+  return (dockPinId && minutesList.find(m => m.id === dockPinId))
     || meetingByDate(todayStr()) || minutesList[0] || (canEdit ? { id: null, meeting_date: null } : null);
 }
 
@@ -72,92 +70,64 @@ function shownMeeting() {
   return dockMeeting();
 }
 
-// 表示中の回が変わったら、保存先の日付を決め直す。最新の回が今日より前なら今日、それ以外はその回の日付
-function syncSaveDate(meeting) {
-  const id = meeting ? meeting.id : undefined;
-  if (id === saveDateFor) return;
-  saveDateFor = id;
-  overwriteOk = null;
-  if (!meeting || !meeting.id) saveDate = todayStr();
-  else if (meeting.id !== sessionCopyId && meeting === minutesList[0] && meeting.meeting_date < todayStr()) saveDate = todayStr();
-  else saveDate = meeting.meeting_date;
+// 見出しの横の注意書き: 今日より前の議事録を表示しているとき
+function pastNoteText(meeting) {
+  if (!canEdit || !meeting || !meeting.id || meeting.meeting_date >= todayStr()) return '';
+  return `過去（${fmtMeetingDate(meeting.meeting_date)}）の議事録です。今日の会議の分は「新しい日付で作成」で作ってから書いてください`;
 }
 
-function saveNoteText(meeting) {
-  if (!canEdit || !meeting) return '';
-  if (meeting.id && saveDate === meeting.meeting_date) return '';
-  const ex = meetingByDate(saveDate);
-  const to = `${fmtMeetingDate(saveDate)}の議事録として${ex ? '上書き' : ''}保存します`;
-  return meeting.id ? `${fmtMeetingDate(meeting.meeting_date)}の内容を表示しています。書き込むと${to}` : `書き込むと${to}`;
-}
-
-// 保存先の議事録を返す。表示中の回と違う日付なら、表示中の内容を引き継いでその日付の議事録を作る（1回だけ）
-let copying = null;
-async function resolveTarget(src) {
-  if (src.id && saveDate === src.meeting_date) return src;
-  const ex = meetingByDate(saveDate);
-  if (ex && ex.id === sessionCopyId) return ex;
-  if (copying) return copying;
-  copying = (async () => {
-    const date = saveDate;
-    if (ex) {
-      if (overwriteOk !== date && !confirm(`${fmtMeetingDate(date)} の議事録はすでにあります。表示中の内容で上書きしますか？`)) return null;
-      if (!(await deleteMeetingRow(ex))) return null;
-    }
-    const m = await createMinutes(date, src);
-    if (m) { sessionCopyId = m.id; saveDateFor = m.id; onCopyCreated(); }
-    return m;
-  })();
-  try { return await copying; } finally { copying = null; }
-}
-
-// 新しい日付の議事録ができたら、表示をその回に切り替える（入力中の欄があるときは、入力欄から離れてから）
-function onCopyCreated() {
-  renderSaveState();
-  if (currentView === 'minutes') { minutesSelectedDate = saveDate; renderMinutesList(); }
-  rerenderWhenIdle();
-}
-function rerenderWhenIdle() {
-  const ed = document.activeElement;
-  if (ed && ed.classList.contains('rt-editor')) {
-    ed.addEventListener('blur', () => setTimeout(rerenderWhenIdle, 0), { once: true });
-    return;
-  }
-  Promise.all([...pendingSaves]).then(() => {
-    renderDock();
-    if (currentView === 'minutes') selectMinutes(minutesSelectedDate);
-  });
-}
-
-// 保存先の日付を変えたとき
-async function changeSaveDate(newDate, input) {
-  if (!newDate || newDate === saveDate) return;
+// 表示中の議事録の内容をコピーして、選んだ日付の議事録を作り、表示をその回に切り替える
+async function copyMeetingTo(src, dateStr) {
+  if (!dateStr) return null;
   await flushEditors();
-  const shown = shownMeeting();
-  const ex = meetingByDate(newDate);
-  const revert = () => { input.value = saveDate; };
-  if (shown && shown.id && shown.id === sessionCopyId) {
-    // この画面で書き込んで作った回: その回の日付を付け替える
-    if (ex && ex.id !== shown.id) {
-      if (!confirm(`${fmtMeetingDate(newDate)} の議事録はすでにあります。書き込んだ内容で上書きしますか？`)) { revert(); return; }
-      if (!(await deleteMeetingRow(ex))) { revert(); return; }
-    }
-    const { data, error } = await sb.from('denki_meetings')
-      .update({ meeting_date: newDate, updated_at: new Date().toISOString(), updated_by: await currentEmail() })
-      .eq('id', shown.id).select('id');
-    if (error || !data.length) { minutesError(error || new Error('権限がないか、ログインが切れています')); revert(); return; }
-    await loadMinutesList();
-    saveDate = newDate;
-    if (currentView === 'minutes') selectMinutes(newDate);
-    renderDock();
-    return;
+  if (src && src.id && src.meeting_date === dateStr) { alert('表示中の議事録と同じ日付です。別の日付を選んでください。'); return null; }
+  const ex = meetingByDate(dateStr);
+  if (ex) {
+    if (!confirm(`${fmtMeetingDate(dateStr)} の議事録はすでにあります。表示中の内容で上書きしますか？\n（${fmtMeetingDate(dateStr)} の今の内容は消えます）`)) return null;
+    if (!(await deleteMeetingRow(ex))) return null;
   }
-  if (ex && (!shown || ex.id !== shown.id)) {
-    if (!confirm(`${fmtMeetingDate(newDate)} の議事録はすでにあります。書き込むと、表示中の内容で上書きします。よろしいですか？`)) { revert(); return; }
-    overwriteOk = newDate;
-  }
-  saveDate = newDate;
-  renderSaveState();
+  const m = await createMinutes(dateStr, src && src.id ? src : null);
+  if (!m) return null;
+  dockPinId = m.id;
+  minutesSelectedDate = dateStr;
+  setSaveState('saved');
+  renderDock();
+  if (currentView === 'minutes') selectMinutes(dateStr);
+  return m;
+}
+
+// 「新しい日付で作成」ボタン（押すと日付を選ぶ欄が出る。最初は今日）
+function createNewDateControls() {
+  const wrap = document.createElement('span');
+  wrap.className = 'new-date-controls';
+  const open = document.createElement('button');
+  open.className = 'btn';
+  open.textContent = '新しい日付で作成';
+  open.title = '表示中の議事録の内容をコピーして、選んだ日付の議事録を作ります';
+  const form = document.createElement('span');
+  form.className = 'new-date-form';
+  form.hidden = true;
+  const di = document.createElement('input');
+  di.type = 'date';
+  di.className = 'save-date';
+  const ok = document.createElement('button');
+  ok.className = 'btn btn-dark btn-save';
+  ok.textContent = '作成';
+  const cancel = document.createElement('button');
+  cancel.className = 'link';
+  cancel.textContent = 'やめる';
+  const show = on => { open.hidden = on; form.hidden = !on; if (on) { di.value = todayStr(); di.focus(); } };
+  open.addEventListener('click', () => show(true));
+  cancel.addEventListener('click', () => show(false));
+  ok.addEventListener('click', async () => {
+    ok.disabled = true;
+    const m = await copyMeetingTo(shownMeeting(), di.value);
+    ok.disabled = false;
+    if (m) show(false);
+  });
+  form.appendChild(di); form.appendChild(ok); form.appendChild(cancel);
+  wrap.appendChild(open); wrap.appendChild(form);
+  return wrap;
 }
 
 // ─── 保存の状態と保存ボタン ───────────────────────────
@@ -170,23 +140,13 @@ function renderSaveState() {
   const hm = savedAt ? `${savedAt.getHours()}:${String(savedAt.getMinutes()).padStart(2, '0')}` : '';
   const text = { dirty: '未保存', saving: '保存中…', saved: `保存しました ${hm}`, error: '保存できませんでした' }[saveState] || '';
   document.querySelectorAll('.save-status').forEach(el => { el.textContent = text; el.dataset.state = saveState || ''; });
-  document.querySelectorAll('.save-date').forEach(el => { el.value = saveDate || ''; });
-  const note = saveNoteText(shownMeeting());
+  const note = pastNoteText(shownMeeting());
   document.querySelectorAll('.save-note').forEach(el => { el.textContent = note; el.hidden = !note; });
 }
 function createSaveControls() {
   const wrap = document.createElement('span');
   wrap.className = 'save-controls';
-  const dl = document.createElement('label');
-  dl.className = 'save-date-label';
-  dl.textContent = '保存先';
-  const di = document.createElement('input');
-  di.type = 'date';
-  di.className = 'save-date';
-  di.title = '保存先の日付（この日付の議事録として保存します）';
-  di.addEventListener('change', () => changeSaveDate(di.value, di));
-  dl.appendChild(di);
-  wrap.appendChild(dl);
+  wrap.appendChild(createNewDateControls());
   const st = document.createElement('span');
   st.className = 'save-status';
   const b = document.createElement('button');
@@ -195,21 +155,44 @@ function createSaveControls() {
   b.title = '入力欄から離れたときにも自動で保存します';
   b.addEventListener('click', async () => {
     await flushEditors();
-    // 保存先の日付が表示中の回と違うときは、書き込みが無くても表示中の内容でその日付の議事録を作る
-    const shown = shownMeeting();
-    if (shown && (!shown.id || saveDate !== shown.meeting_date)) {
-      setSaveState('saving');
-      if (!(await resolveTarget(shown))) { setSaveState('error'); return; }
-      await Promise.all([...pendingSaves]);
-      setSaveState(document.querySelector('.rt-editor.dirty') ? 'dirty' : 'saved');
-      return;
-    }
     if (!document.querySelector('.rt-editor.dirty') && saveState !== 'error') setSaveState('saved');
   });
   wrap.appendChild(st);
   wrap.appendChild(b);
   setTimeout(renderSaveState, 0);
   return wrap;
+}
+
+// まだ議事録が1件も無いときに書き込んだら、今日の議事録を作る（同時に何か所から呼ばれても1回だけ）
+let creatingFirst = null;
+async function ensureFirstMeeting() {
+  const t = meetingByDate(todayStr());
+  if (t) return t;
+  if (!creatingFirst) creatingFirst = createMinutes(todayStr()).finally(() => { creatingFirst = null; });
+  const m = await creatingFirst;
+  if (m) setTimeout(() => { if (!document.activeElement?.classList.contains('rt-editor')) { renderDock(); if (currentView === 'minutes') selectMinutes(todayStr()); } }, 0);
+  return m;
+}
+
+// 今日より前の議事録の入力欄を押したとき、直接直すか確認する（1つの回につき1回だけ）
+async function confirmPastEdit(meeting, ed) {
+  if (!meeting.id || meeting.meeting_date >= todayStr() || pastEditOk.has(meeting.id)) return;
+  ed.blur();
+  if (confirm(`${fmtMeetingDate(meeting.meeting_date)} の議事録を直接直しますか？\n\n［OK］このまま ${fmtMeetingDate(meeting.meeting_date)} の議事録を直す\n［キャンセル］今日の議事録を作って、そちらに書く`)) {
+    pastEditOk.add(meeting.id);
+    ed.focus();
+    return;
+  }
+  const today = meetingByDate(todayStr());
+  if (today) {
+    alert(`今日（${fmtMeetingDate(todayStr())}）の議事録はすでにあるので、そちらを開きます。`);
+    dockPinId = today.id;
+    minutesSelectedDate = today.meeting_date;
+    renderDock();
+    if (currentView === 'minutes') selectMinutes(today.meeting_date);
+    return;
+  }
+  await copyMeetingTo(meeting, todayStr());
 }
 
 async function loadMeetingData(meeting) {
@@ -265,13 +248,14 @@ function createEditor(meeting, key, body) {
     ed.classList.toggle('dirty', ed.innerHTML !== saved);
     if (ed.classList.contains('dirty')) setSaveState('dirty');
   });
+  ed.addEventListener('focus', () => confirmPastEdit(meeting, ed));
   ed.addEventListener('blur', () => {
     if (ed.innerHTML === saved) return;
     const current = ed.innerHTML;
     const clean = sanitizeRich(current);
     setSaveState('saving');
     const p = (async () => {
-      const target = await resolveTarget(meeting); // 保存先の日付の議事録
+      const target = meeting.id ? meeting : await ensureFirstMeeting(); // まだ1件も無ければ今日の議事録を作る
       if (!target) { setSaveState('error'); return; }
       const ok = await saveBody(target.id, key, isBlankRich(clean) ? null : clean);
       if (ok) { saved = current; ed.classList.toggle('dirty', ed.innerHTML !== saved); }
@@ -448,7 +432,6 @@ function renderMinutesMain(meeting, data) {
   }
   head.appendChild(right);
   main.appendChild(head);
-  syncSaveDate(meeting);
   const note = document.createElement('div');
   note.className = 'save-note carry-banner';
   main.appendChild(note);
@@ -613,7 +596,6 @@ async function renderDock() {
   title.appendChild(note);
   if (canEdit && key) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
-  if (currentView !== 'minutes') syncSaveDate(meeting); // 議事録の画面を開いているときは、そちらの保存先の日付を変えない
   renderSaveState();
   if (!key) return;
   const ed = createEditor(meeting, key, getBody(data, key));
