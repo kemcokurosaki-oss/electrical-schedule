@@ -272,8 +272,17 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .rt-tools { display: flex; align-items: center; gap: 4px; flex-wrap: wrap; }
 .rt-btn { height: 26px; padding: 0 10px; border: 1px solid #d5d9de; border-radius: 5px; background: #fff; font-weight: 700; font-size: 12px; cursor: pointer; color: #2a2f35; user-select: none; }
 .rt-btn:hover { background: #eef0f2; }
-.rt-btn.red { color: #c03030; } .rt-btn.blue { color: #1f5fa8; } .rt-btn.strike { text-decoration: line-through; } .rt-btn.clear { color: #5b636c; }
-.rt-hint { margin-left: 8px; font-size: 11.5px; color: #8a929b; }
+.rt-btn.strike { text-decoration: line-through; } .rt-btn.clear { color: #5b636c; }
+.rt-color { position: relative; display: inline-flex; }
+.rt-btn.color { display: inline-grid; grid-template-columns: auto auto; grid-template-rows: auto auto; column-gap: 4px; align-items: center; padding: 0 6px 0 8px; }
+.rt-a { font-size: 13px; line-height: 1; font-family: 'Times New Roman', serif; }
+.rt-a-bar { grid-row: 2; width: 13px; height: 3px; margin-top: 1px; background: #c03030; }
+.rt-caret { grid-column: 2; grid-row: 1 / 3; font-size: 10px; color: #5b636c; }
+.rt-color-pop { position: absolute; top: calc(100% + 2px); left: 0; z-index: 20; display: flex; flex-direction: column; padding: 4px; background: #fff; border: 1px solid #d5d9de; border-radius: 6px; box-shadow: 0 4px 12px rgba(0,0,0,.12); }
+.rt-color-pop[hidden] { display: none; }
+.rt-color-item { display: flex; align-items: center; gap: 8px; height: 26px; padding: 0 10px; border: none; background: none; border-radius: 4px; font-size: 12px; font-weight: 500; cursor: pointer; color: #2a2f35; white-space: nowrap; }
+.rt-color-item:hover { background: #eef0f2; }
+.rt-swatch { width: 14px; height: 14px; border-radius: 3px; }
 .rt-editor { min-height: 34px; padding: 6px 10px; font-size: 13px; line-height: 1.75; border: 1px solid #c9ced4; border-radius: 6px; outline: none; background: #fff; overflow-wrap: anywhere; }
 .rt-editor:focus { border-color: #2a2f35; }
 .rt-editor.dirty { border-color: #e8a317; background: #fffcf3; }

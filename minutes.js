@@ -126,35 +126,59 @@ function createEditor(meeting, key, body) {
 }
 
 // 書式のボタン（文字を選んでから押す）
+const RT_COLORS = [['黒', '#2a2f35'], ['赤', '#c03030'], ['青', '#1f5fa8']];
 function createRichToolbar() {
   const bar = document.createElement('div');
   bar.className = 'rt-tools';
-  const cmd = (c, v) => e => {
-    e.preventDefault(); // 入力欄の選択を外さない
+  const run = (c, v) => {
     try { document.execCommand('styleWithCSS', false, true); } catch (_) { /* 古いブラウザ */ }
     document.execCommand(c, false, v);
     const ed = document.activeElement;
     if (ed && ed.classList.contains('rt-editor')) ed.dispatchEvent(new Event('input'));
   };
-  [
-    ['黒', '', '選んだ文字を黒に', cmd('foreColor', '#2a2f35')],
-    ['赤', 'red', '選んだ文字を赤に（訂正）', cmd('foreColor', '#c03030')],
-    ['青', 'blue', '選んだ文字を青に（追記）', cmd('foreColor', '#1f5fa8')],
-    ['取り消し線', 'strike', '選んだ文字に取り消し線（もう一度押すと解除）', cmd('strikeThrough')],
-    ['書式解除', 'clear', '色と取り消し線を外す', cmd('removeFormat')],
-  ].forEach(([label, cls, title, fn]) => {
+  const button = (cls, title, onDown) => {
     const b = document.createElement('button');
     b.type = 'button';
     b.className = 'rt-btn ' + cls;
-    b.textContent = label;
     b.title = title;
-    b.addEventListener('mousedown', fn);
-    bar.appendChild(b);
+    b.addEventListener('mousedown', e => { e.preventDefault(); onDown(e); }); // 入力欄の選択を外さない
+    return b;
+  };
+
+  // 文字の色（Excel と同じ「A に色の線」のボタン。押すと色を選べる）
+  const wrap = document.createElement('span');
+  wrap.className = 'rt-color';
+  const pop = document.createElement('div');
+  pop.className = 'rt-color-pop';
+  pop.hidden = true;
+  const close = e => { if (!wrap.contains(e.target)) { pop.hidden = true; document.removeEventListener('mousedown', close); } };
+  const colorBtn = button('color', '文字の色', () => {
+    pop.hidden = !pop.hidden;
+    if (!pop.hidden) document.addEventListener('mousedown', close);
+    else document.removeEventListener('mousedown', close);
   });
-  const hint = document.createElement('span');
-  hint.className = 'rt-hint';
-  hint.textContent = '文字を選んでからボタンを押す／入力欄から離れると自動で保存';
-  bar.appendChild(hint);
+  colorBtn.innerHTML = '<span class="rt-a">A</span><span class="rt-a-bar"></span><span class="rt-caret">▾</span>';
+  RT_COLORS.forEach(([label, color]) => {
+    const item = button('rt-color-item', label, () => {
+      run('foreColor', color);
+      pop.hidden = true;
+      document.removeEventListener('mousedown', close);
+    });
+    item.innerHTML = '<span class="rt-swatch"></span><span></span>';
+    item.firstChild.style.background = color;
+    item.lastChild.textContent = label;
+    pop.appendChild(item);
+  });
+  wrap.appendChild(colorBtn);
+  wrap.appendChild(pop);
+  bar.appendChild(wrap);
+
+  const strike = button('strike', '選んだ文字に取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
+  strike.textContent = '取り消し';
+  bar.appendChild(strike);
+  const clear = button('clear', '色と取り消し線を外す', () => run('removeFormat'));
+  clear.textContent = '書式解除';
+  bar.appendChild(clear);
   return bar;
 }
 
