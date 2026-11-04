@@ -318,14 +318,17 @@ function createRichToolbar() {
     b.lastChild.textContent = label;
     colors.appendChild(b);
   });
-  bar.appendChild(colors);
-
-  const strike = button('strike', '取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
+  // 文字の色・取り消し線・書式解除は1つの枠にまとめる（色とそれ以外の間に区切り線）
+  const sep = document.createElement('span');
+  sep.className = 'rt-sep';
+  colors.appendChild(sep);
+  const strike = button('rt-color-btn strike', '取り消し線（もう一度押すと解除）', () => run('strikeThrough'));
   strike.innerHTML = '<span class="rt-s">abc</span> 取り消し線';
-  bar.appendChild(strike);
-  const clear = button('clear', '色と取り消し線を外す（黒に戻す）', () => run('removeFormat'));
+  colors.appendChild(strike);
+  const clear = button('rt-color-btn clear', '色と取り消し線を外す（黒に戻す）', () => run('removeFormat'));
   clear.textContent = '書式解除';
-  bar.appendChild(clear);
+  colors.appendChild(clear);
+  bar.appendChild(colors);
   return bar;
 }
 
@@ -345,6 +348,9 @@ async function showMinutes() {
   }
 }
 
+let monthOpenState = {}; // 年月の行の開閉 { '2026-11': true/false }（押して変えた月だけ）
+try { monthOpenState = JSON.parse(localStorage.getItem('denki_minutes_months')) || {}; } catch (_) { monthOpenState = {}; }
+
 function renderMinutesList() {
   const nw = document.getElementById('minutes-new');
   if (canEdit && !nw.firstChild) nw.appendChild(createNewDateControls(true));
@@ -354,16 +360,33 @@ function renderMinutesList() {
     list.textContent = '議事録はまだありません';
     return;
   }
+  // 年月の行を押すと開閉する。最初は一番新しい月と選んでいる回の月だけ開く。押して変えた開閉はこの PC に覚えておく
+  const latestMonth = minutesList[0].meeting_date.slice(0, 7);
+  const selMonth = (minutesSelectedDate || '').slice(0, 7);
+  const isOpen = month => month in monthOpenState ? monthOpenState[month] : (month === latestMonth || month === selMonth);
+  const counts = {};
+  minutesList.forEach(m => { const k = m.meeting_date.slice(0, 7); counts[k] = (counts[k] || 0) + 1; });
   let curMonth = null;
   minutesList.forEach(m => {
     const month = m.meeting_date.slice(0, 7);
     if (month !== curMonth) {
       curMonth = month;
-      const h = document.createElement('div');
+      const open = isOpen(month);
+      const h = document.createElement('button');
       h.className = 'minutes-month';
-      h.textContent = `${month.slice(0, 4)}年${Number(month.slice(5, 7))}月`;
+      h.innerHTML = '<span class="minutes-month-caret"></span><span></span><span class="minutes-month-count"></span>';
+      h.children[0].textContent = open ? '▼' : '▶';
+      h.children[1].textContent = `${month.slice(0, 4)}年${Number(month.slice(5, 7))}月`;
+      h.children[2].textContent = `${counts[month]}件`;
+      h.title = open ? '畳む' : '開く';
+      h.addEventListener('click', () => {
+        monthOpenState[month] = !open;
+        try { localStorage.setItem('denki_minutes_months', JSON.stringify(monthOpenState)); } catch (_) { /* 保存できなくても開閉はする */ }
+        renderMinutesList();
+      });
       list.appendChild(h);
     }
+    if (!isOpen(month)) return;
     const b = document.createElement('button');
     b.className = 'minutes-date-btn' + (m.meeting_date === minutesSelectedDate ? ' active' : '');
     b.innerHTML = '<span></span>';
@@ -381,6 +404,7 @@ function renderMinutesList() {
 
 async function selectMinutes(dateStr) {
   minutesSelectedDate = dateStr;
+  if (dateStr && monthOpenState[dateStr.slice(0, 7)] === false) delete monthOpenState[dateStr.slice(0, 7)]; // 畳んだ月の回を「日付で探す」で選んだら開く
   document.getElementById('minutes-date').value = dateStr;
   renderMinutesList();
 

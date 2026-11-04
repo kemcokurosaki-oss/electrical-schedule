@@ -281,7 +281,9 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 
 /* 書式付きの入力欄 */
 .rt-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.rt-colors { display: flex; gap: 2px; padding: 3px; background: #eef0f2; border: 1px solid #d5d9de; border-radius: 8px; }
+.rt-colors { display: flex; gap: 2px; padding: 2px; background: #eef0f2; border: 1px solid #d5d9de; border-radius: 8px; }
+.rt-colors .rt-btn { height: 22px; } /* 書式のボタン（色・取り消し線・書式解除）は1つの枠に */
+.rt-sep { width: 1px; margin: 3px 3px; background: #d5d9de; }
 .rt-btn.rt-color-btn { display: inline-flex; align-items: center; gap: 6px; border: none; border-radius: 6px; padding: 0 10px; }
 .rt-btn.rt-color-btn:hover { background: #e3e6ea; }
 .rt-btn.rt-color-btn .rt-swatch { width: 10px; height: 10px; border-radius: 2px; }
@@ -423,7 +425,10 @@ select.st-pill:focus { outline: 2px solid #2a2f35; outline-offset: 1px; }
 .minutes-search { display: flex; flex-direction: column; gap: 4px; font-size: 11px; font-weight: 700; color: #7c858f; }
 .minutes-search input { height: 32px; padding: 0 8px; font-size: 13px; border: 1px solid #c9ced4; border-radius: 6px; color: #2a2f35; }
 #minutes-list { display: flex; flex-direction: column; gap: 2px; font-size: 12px; color: #7c858f; }
-.minutes-month { margin-top: 8px; padding: 0 4px 2px; font-size: 11px; font-weight: 700; color: #7c858f; }
+.minutes-month { display: flex; align-items: center; gap: 6px; margin-top: 8px; padding: 4px 6px; background: none; border: none; border-radius: 4px; cursor: pointer; text-align: left; font-size: 11px; font-weight: 700; color: #7c858f; }
+.minutes-month:hover { background: #eef0f2; color: #2a2f35; }
+.minutes-month-caret { width: 10px; font-size: 9px; }
+.minutes-month-count { margin-left: auto; font-weight: 500; }
 .minutes-date-btn { display: flex; align-items: center; gap: 8px; text-align: left; padding: 7px 10px; background: none; border: none; border-radius: 6px; cursor: pointer; font-size: 13px; color: #2a2f35; }
 .minutes-date-btn:hover { background: #eef0f2; }
 .minutes-date-btn.active { background: #2a2f35; color: #fff; font-weight: 700; }
