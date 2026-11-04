@@ -188,7 +188,7 @@ async function refreshDisplay() {
   hideLoading();
 }
 
-// ログイン中の人が編集できるか。閲覧のみの人には工番管理・会議の開始を出さず、タスクリスト・議事録は表示だけにする
+// ログイン中の人が編集できるか。閲覧のみの人には工番管理を出さず、タスクリスト・議事録は表示だけにする
 async function setupEditPermission() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;
@@ -212,8 +212,7 @@ async function init() {
   applyNavCompact();
   await setupEditPermission();
   await loadMinutesList();
-  renderMeetingState();
-  setDockOpen(!!activeMeeting()); // 会議中なら議事録欄を開いた状態で始める
+  setDockOpen(!!meetingByDate(todayStr())); // 今日の議事録があれば議事録欄を開いた状態で始める
   await refreshDisplay();
 }
 

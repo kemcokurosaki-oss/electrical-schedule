@@ -4,14 +4,11 @@
 let panelCol = null; // 表示中の列 { project_number, machine, rel: { label, nos, ganttId } | null }
 
 function openTaskPanel(pn, machine, rel) {
-  const wasOpen = !!panelCol;
   // 同じ工程の行をもう一度押したら、絞り込みをやめて全項目を表示する
   if (rel && panelCol && panelCol.rel && panelCol.rel.ganttId === rel.ganttId
       && panelCol.project_number === pn && panelCol.machine === machine) rel = null;
   panelCol = { project_number: pn, machine, rel: rel || null };
   document.getElementById('view-gantt').classList.add('panel-open');
-  // 会議中にタスクリストを開いたら、ガントの高さを確保するため議事録欄を畳む
-  if (!wasOpen && activeMeeting() && dockOpen) setDockOpen(false);
   renderTaskPanel();
   if (ganttInitialized) { gantt.render(); setTimeout(resizeGantt, 0); }
 }

@@ -1,8 +1,9 @@
 // ─── 議事録（電気工程会議） ─────────────────────────────
 // 会議日ごとに「全体の決定事項」＋「工番の機械ごとの欄」（機械が合わない工程がある工番は「工番共通」の欄も）。
-// 本文は書式付き（黒・赤・青・取り消し線）。会議を始めると、前回の内容を色や取り消し線ごと全部引き継ぐ。
-// denki_meetings（会議日・決定事項・会議の開始/終了）／denki_meeting_notes（工番＋機械ごとの欄。machine='' は工番共通）
-let minutesList = [];          // [{ id, meeting_date, started_at, ended_at }] 新しい順
+// 本文は書式付き（黒・赤・青・取り消し線）。今日の議事録が無いときは前回の内容を表示し、
+// 書き込んだ時点で今日の議事録を作って（前回の内容を色や取り消し線ごと全部引き継ぐ）そこに保存する。
+// denki_meetings（会議日・決定事項）／denki_meeting_notes（工番＋機械ごとの欄。machine='' は工番共通）
+let minutesList = [];          // [{ id, meeting_date }] 新しい順
 let minutesSelectedDate = null;
 let minutesLoaded = false;
 let minutesPn = '__all';       // 議事録の画面で表示している工番（'__all' は全体）
@@ -10,11 +11,14 @@ const minutesCache = {};       // 会議 id → { decisions, notes: { '工番|�
 let dockKey = '__all';         // 下の議事録欄で表示しているページ（'__all' か工番）
 let dockMachine = null;        // 工番のページで表示している機械（'' は工番共通）
 let dockOpen = false;
-const pendingSaves = new Set(); // 保存中の処理（会議を始める前に待つ）
+const pendingSaves = new Set(); // 保存中の処理
+let saveState = null;          // 保存の状態の表示（'dirty' | 'saving' | 'saved' | 'error'）
+let savedAt = null;
 
 const WEEKDAYS = ['日', '月', '火', '水', '木', '金', '土'];
 
 function fmtMeetingDate(dateStr) {
+  if (!dateStr) return '';
   const d = parseLocalDate(dateStr);
   return `${d.getFullYear()}/${d.getMonth() + 1}/${d.getDate()}（${WEEKDAYS[d.getDay()]}）`;
 }
@@ -40,11 +44,7 @@ function splitKey(key) {
 
 // ─── 読み込み ─────────────────────────────────────────
 async function loadMinutesList() {
-  let res = await sb.from('denki_meetings').select('id, meeting_date, started_at, ended_at').order('meeting_date', { ascending: false });
-  if (res.error) {
-    console.warn('会議の開始・終了を読めませんでした（DB変更の SQL を実行してください）', res.error);
-    res = await sb.from('denki_meetings').select('id, meeting_date').order('meeting_date', { ascending: false });
-  }
+  const res = await sb.from('denki_meetings').select('id, meeting_date').order('meeting_date', { ascending: false });
   if (res.error) { console.warn('議事録の一覧を読み込めませんでした', res.error); minutesList = []; return false; }
   minutesList = res.data;
   return true;
@@ -54,18 +54,87 @@ function meetingByDate(dateStr) {
   return minutesList.find(m => m.meeting_date === dateStr) || null;
 }
 
-// 会議中: 今日の議事録で、開始していて終了していないもの
-function activeMeeting() {
-  const m = meetingByDate(todayStr());
-  return m && m.started_at && !m.ended_at ? m : null;
-}
-
 // 下の議事録欄に出す回: 今日の議事録があればそれ、無ければ一番新しい回
 function dockMeeting() {
-  return meetingByDate(todayStr()) || minutesList[0] || null;
+  return meetingByDate(todayStr()) || minutesList[0] || (canEdit ? { id: null, meeting_date: null } : null);
+}
+
+// 前回の内容を表示していて、書き込むと今日の議事録になる回か（一番新しい回が今日より前、またはまだ1件も無い）
+function isCarryMeeting(meeting) {
+  if (!canEdit) return false;
+  if (!meeting.id) return true;
+  return meeting === minutesList[0] && meeting.meeting_date < todayStr();
+}
+
+function carryNoteText(meeting) {
+  return meeting.id
+    ? `前回（${fmtMeetingDate(meeting.meeting_date)}）の内容です。書き込むと今日（${fmtMeetingDate(todayStr())}）の議事録として保存します`
+    : `書き込むと今日（${fmtMeetingDate(todayStr())}）の議事録として保存します`;
+}
+
+// 今日の議事録を（無ければ前回の内容を引き継いで）作る。同時に何か所から呼ばれても1回だけ作る
+let creatingToday = null;
+async function ensureTodayMeeting() {
+  const t = meetingByDate(todayStr());
+  if (t) return t;
+  if (creatingToday) return creatingToday;
+  creatingToday = createMinutes(todayStr());
+  const m = await creatingToday;
+  creatingToday = null;
+  if (m) onTodayCreated();
+  return m;
+}
+
+// 今日の議事録ができたら、表示を今日の回に切り替える（入力中の欄があるときは、入力欄から離れてから）
+function onTodayCreated() {
+  document.querySelectorAll('.carry-note').forEach(el => { el.textContent = `今日（${fmtMeetingDate(todayStr())}）の議事録に保存しています`; });
+  if (currentView === 'minutes') { minutesSelectedDate = todayStr(); renderMinutesList(); }
+  rerenderWhenIdle();
+}
+function rerenderWhenIdle() {
+  const ed = document.activeElement;
+  if (ed && ed.classList.contains('rt-editor')) {
+    ed.addEventListener('blur', () => setTimeout(rerenderWhenIdle, 0), { once: true });
+    return;
+  }
+  Promise.all([...pendingSaves]).then(() => {
+    renderDock();
+    if (currentView === 'minutes') selectMinutes(todayStr());
+  });
+}
+
+// ─── 保存の状態と保存ボタン ───────────────────────────
+function setSaveState(state) {
+  saveState = state;
+  if (state === 'saved') savedAt = new Date();
+  renderSaveState();
+}
+function renderSaveState() {
+  const hm = savedAt ? `${savedAt.getHours()}:${String(savedAt.getMinutes()).padStart(2, '0')}` : '';
+  const text = { dirty: '未保存', saving: '保存中…', saved: `保存しました ${hm}`, error: '保存できませんでした' }[saveState] || '';
+  document.querySelectorAll('.save-status').forEach(el => { el.textContent = text; el.dataset.state = saveState || ''; });
+}
+function createSaveControls() {
+  const wrap = document.createElement('span');
+  wrap.className = 'save-controls';
+  const st = document.createElement('span');
+  st.className = 'save-status';
+  const b = document.createElement('button');
+  b.className = 'btn btn-dark btn-save';
+  b.textContent = '保存';
+  b.title = '入力欄から離れたときにも自動で保存します';
+  b.addEventListener('click', async () => {
+    await flushEditors();
+    if (!document.querySelector('.rt-editor.dirty') && saveState !== 'error') setSaveState('saved');
+  });
+  wrap.appendChild(st);
+  wrap.appendChild(b);
+  setTimeout(renderSaveState, 0);
+  return wrap;
 }
 
 async function loadMeetingData(meeting) {
+  if (!meeting.id) return { decisions: null, notes: {} }; // まだ1件も無いときの空の議事録
   if (minutesCache[meeting.id]) return minutesCache[meeting.id];
   const [mRes, nRes] = await Promise.all([
     sb.from('denki_meetings').select('decisions').eq('id', meeting.id).single(),
@@ -113,14 +182,23 @@ function createEditor(meeting, key, body) {
   ed.contentEditable = 'true';
   ed.innerHTML = html;
   let saved = ed.innerHTML;
-  ed.addEventListener('input', () => ed.classList.toggle('dirty', ed.innerHTML !== saved));
+  const carry = isCarryMeeting(meeting); // 前回の内容に書き込んだら、今日の議事録に保存する
+  ed.addEventListener('input', () => {
+    ed.classList.toggle('dirty', ed.innerHTML !== saved);
+    if (ed.classList.contains('dirty')) setSaveState('dirty');
+  });
   ed.addEventListener('blur', () => {
     if (ed.innerHTML === saved) return;
     const current = ed.innerHTML;
     const clean = sanitizeRich(current);
-    const p = saveBody(meeting.id, key, isBlankRich(clean) ? null : clean).then(ok => {
+    setSaveState('saving');
+    const p = (async () => {
+      const target = carry ? await ensureTodayMeeting() : meeting;
+      if (!target) { setSaveState('error'); return; }
+      const ok = await saveBody(target.id, key, isBlankRich(clean) ? null : clean);
       if (ok) { saved = current; ed.classList.toggle('dirty', ed.innerHTML !== saved); }
-    }).finally(() => pendingSaves.delete(p));
+      setSaveState(!ok ? 'error' : document.querySelector('.rt-editor.dirty') ? 'dirty' : 'saved');
+    })().finally(() => pendingSaves.delete(p));
     pendingSaves.add(p);
   });
   return ed;
@@ -191,7 +269,6 @@ async function flushEditors() {
 
 // ─── 議事録の画面 ─────────────────────────────────────
 async function showMinutes() {
-  document.getElementById('minutes-new').style.display = canEdit ? '' : 'none';
   if (!minutesLoaded) {
     minutesLoaded = true;
     selectMinutes(dockMeeting()?.meeting_date || todayStr());
@@ -244,7 +321,7 @@ async function selectMinutes(dateStr) {
       b.textContent = 'この日の議事録を作成（前回の内容を引き継ぎます）';
       b.addEventListener('click', async () => {
         await flushEditors();
-        if (await createMinutes(dateStr)) { selectMinutes(dateStr); renderMeetingState(); renderDock(); }
+        if (await createMinutes(dateStr)) { selectMinutes(dateStr); renderDock(); }
       });
       main.appendChild(b);
     }
@@ -278,6 +355,7 @@ function renderMinutesMain(meeting, data) {
   head.appendChild(richLegend());
   const right = document.createElement('div');
   right.className = 'minutes-head-right';
+  if (canEdit) right.appendChild(createSaveControls());
   const pr = document.createElement('button');
   pr.className = 'btn';
   pr.textContent = '印刷・PDF';
@@ -292,6 +370,12 @@ function renderMinutesMain(meeting, data) {
   }
   head.appendChild(right);
   main.appendChild(head);
+  if (isCarryMeeting(meeting)) {
+    const note = document.createElement('div');
+    note.className = 'carry-note carry-banner';
+    note.textContent = carryNoteText(meeting);
+    main.appendChild(note);
+  }
 
   if (canEdit) {
     const tools = createRichToolbar();
@@ -373,6 +457,8 @@ function setDockKey(pn, machine) {
 }
 
 async function renderDock() {
+  const ds = document.getElementById('dock-save');
+  if (canEdit && !ds.firstChild) ds.appendChild(createSaveControls());
   const tabs = document.getElementById('dock-tabs');
   const mTabs = document.getElementById('dock-machines');
   const body = document.getElementById('dock-body');
@@ -385,7 +471,7 @@ async function renderDock() {
     body.innerHTML = '';
     const p = document.createElement('div');
     p.className = 'dock-empty';
-    p.textContent = canEdit ? '議事録はまだありません。上の「会議を始める」で今日の議事録を作成します。' : '議事録はまだありません。';
+    p.textContent = '議事録はまだありません。';
     body.appendChild(p);
     return;
   }
@@ -444,9 +530,9 @@ async function renderDock() {
   title.className = 'dock-slot-title';
   title.innerHTML = '<b></b><span></span>';
   title.querySelector('b').textContent = slot ? `${page.title}　${slot.title}` : page.title;
-  title.querySelector('span').textContent = meeting.meeting_date === todayStr()
-    ? `${fmtMeetingDate(meeting.meeting_date)}　前回の内容を引き継いでいます`
-    : `${fmtMeetingDate(meeting.meeting_date)}（前回）${canEdit ? '　「会議を始める」で今日の議事録に引き継ぎます' : ''}`;
+  const note = title.querySelector('span');
+  if (isCarryMeeting(meeting)) { note.className = 'carry-note'; note.textContent = carryNoteText(meeting); }
+  else note.textContent = `${fmtMeetingDate(meeting.meeting_date)}の議事録`;
   if (canEdit && key) title.appendChild(createRichToolbar()); // 見出しと書式のボタンを1行にまとめる
   body.appendChild(title);
   if (!key) return;
@@ -455,56 +541,11 @@ async function renderDock() {
   body.appendChild(ed);
 }
 
-// ─── 会議の開始・終了 ─────────────────────────────────
-function renderMeetingState() {
-  const active = activeMeeting();
-  document.getElementById('meeting-lamp').hidden = !active;
-  document.getElementById('btn-meeting-start').hidden = !canEdit || !!active;
-  document.getElementById('btn-meeting-end').hidden = !canEdit || !active;
-  const latest = minutesList[0];
-  document.getElementById('view-sub').textContent = active
-    ? `電気工程会議 ${fmtMeetingDate(active.meeting_date)}`
-    : latest ? `前回の会議 ${fmtMeetingDate(latest.meeting_date)}` : '';
-}
-
-async function startMeeting() {
-  if (!canEdit) return;
-  await flushEditors();
-  const m = await createMinutes(todayStr(), { start: true });
-  if (!m) return;
-  renderMeetingState();
-  setDockOpen(true);
-  if (currentView === 'minutes') selectMinutes(todayStr());
-}
-
-async function endMeeting() {
-  const m = activeMeeting();
-  if (!m) return;
-  await flushEditors();
-  const { error } = await sb.from('denki_meetings')
-    .update({ ended_at: new Date().toISOString(), updated_by: await currentEmail() }).eq('id', m.id);
-  if (error) { minutesError(error); return; }
-  await loadMinutesList();
-  renderMeetingState();
-  setDockOpen(false);
-}
-
-document.getElementById('btn-meeting-start').addEventListener('click', startMeeting);
-document.getElementById('btn-meeting-end').addEventListener('click', endMeeting);
-
 // ─── 保存 ───────────────────────────────────────────
 // 議事録を作る。その日より前の一番新しい回の内容（決定事項と全部の欄）を引き継ぐ
-async function createMinutes(dateStr, { start = false } = {}) {
+async function createMinutes(dateStr) {
   const existing = meetingByDate(dateStr);
-  if (existing) {
-    if (start) {
-      const { error } = await sb.from('denki_meetings')
-        .update({ started_at: new Date().toISOString(), ended_at: null, updated_by: await currentEmail() }).eq('id', existing.id);
-      if (error) { minutesError(error); return null; }
-      await loadMinutesList();
-    }
-    return meetingByDate(dateStr);
-  }
+  if (existing) return existing;
 
   const prev = minutesList.find(m => m.meeting_date < dateStr);
   let prevData = null;
@@ -514,7 +555,6 @@ async function createMinutes(dateStr, { start = false } = {}) {
   }
   const email = await currentEmail();
   const row = { meeting_date: dateStr, decisions: prevData ? prevData.decisions : null, updated_by: email };
-  if (start) row.started_at = new Date().toISOString();
   const { data, error } = await sb.from('denki_meetings').insert(row).select('id').single();
   if (error) { minutesError(error); return null; }
 
@@ -570,7 +610,6 @@ async function deleteMinutes(meeting) {
   if (error || !data.length) { minutesError(error || new Error('権限がないか、ログインが切れています')); return; }
   delete minutesCache[meeting.id];
   await loadMinutesList();
-  renderMeetingState();
   renderDock();
   selectMinutes(minutesList[0]?.meeting_date || todayStr());
 }
@@ -619,7 +658,6 @@ document.getElementById('pv-close').addEventListener('click', () => document.get
 document.getElementById('minutes-date').addEventListener('change', e => {
   if (e.target.value) selectMinutes(e.target.value);
 });
-document.getElementById('minutes-new').addEventListener('click', startMeeting);
 // 保存されていない入力があるままページを閉じようとしたら確認する
 window.addEventListener('beforeunload', e => {
   if (document.querySelector('.rt-editor.dirty')) { e.preventDefault(); e.returnValue = ''; }

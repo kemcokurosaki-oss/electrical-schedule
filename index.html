@@ -11,7 +11,7 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261104p">
+  <link rel="stylesheet" href="style.css?v=20261104q">
 </head>
 <body data-view="gantt">
 
@@ -41,11 +41,8 @@
     <!-- 上部バー -->
     <header id="app-bar">
       <div class="bar-title"><span id="view-title">ガントチャート</span><span id="view-sub"></span></div>
-      <span class="lamp meeting" id="meeting-lamp" hidden><span class="lamp-dot"></span>会議中</span>
       <button class="lamp late" id="late-lamp" title="遅れている工程だけを表示"><span class="lamp-dot"></span>遅れ <span id="late-count">0</span>件</button>
       <button class="lamp soon" id="soon-lamp"><span class="lamp-dot"></span>注意 <span id="soon-count">0</span>件</button>
-      <button class="btn btn-dark" id="btn-meeting-start" hidden>会議を始める</button>
-      <button class="btn btn-meeting-end" id="btn-meeting-end" hidden>会議を終える</button>
       <div class="bar-right">
         <div class="seg">
           <button class="active" id="zoom-day">日単位</button>
@@ -95,6 +92,7 @@
             <div class="seg sm dock-tabs" id="dock-tabs"></div>
             <div class="seg sm dock-tabs dock-machines" id="dock-machines" hidden></div>
             <span class="rich-legend"><span>黒＝前回のまま</span><span class="red">赤＝訂正</span><span class="blue">青＝追記</span></span>
+            <span id="dock-save"></span>
           </div>
           <div class="dock-body" id="dock-body"></div>
         </section>
@@ -113,7 +111,6 @@
     <div id="view-minutes" class="view">
       <aside id="minutes-side">
         <label class="minutes-search">日付で検索<input type="date" id="minutes-date"></label>
-        <button class="btn btn-dark" id="minutes-new">＋今日の議事録</button>
         <div id="minutes-list"></div>
       </aside>
       <section id="minutes-main"></section>
@@ -154,14 +151,14 @@
   <div class="pv-page" id="pv-page"></div>
 </div>
 
-<script src="config.js?v=20261104p"></script>
-<script src="state.js?v=20261104p"></script>
-<script src="utils.js?v=20261104p"></script>
-<script src="tasklist.js?v=20261104p"></script>
-<script src="taskpanel.js?v=20261104p"></script>
-<script src="gantt.js?v=20261104p"></script>
-<script src="manage.js?v=20261104p"></script>
-<script src="minutes.js?v=20261104p"></script>
-<script src="app.js?v=20261104p"></script>
+<script src="config.js?v=20261104q"></script>
+<script src="state.js?v=20261104q"></script>
+<script src="utils.js?v=20261104q"></script>
+<script src="tasklist.js?v=20261104q"></script>
+<script src="taskpanel.js?v=20261104q"></script>
+<script src="gantt.js?v=20261104q"></script>
+<script src="manage.js?v=20261104q"></script>
+<script src="minutes.js?v=20261104q"></script>
+<script src="app.js?v=20261104q"></script>
 </body>
 </html>
