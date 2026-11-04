@@ -1,10 +1,13 @@
 // ─── ガント横のタスクリスト（右側のパネル） ─────────────────
 // ガントで機械（またはその下の工程）の行を押すと、その機械のタスクリストを右側に出して見比べられるようにする。
-// 工程の行から開いたときは、その工程に必要な項目（config.js の PROCESS_MAP）を黄色で強調する
+// 工程の行から開いたときは、その工程に必要な項目（config.js の PROCESS_MAP）だけを表示する。同じ工程の行をもう一度押すと全項目に戻す
 let panelCol = null; // 表示中の列 { project_number, machine, rel: { label, nos, ganttId } | null }
 
 function openTaskPanel(pn, machine, rel) {
   const wasOpen = !!panelCol;
+  // 同じ工程の行をもう一度押したら、絞り込みをやめて全項目を表示する
+  if (rel && panelCol && panelCol.rel && panelCol.rel.ganttId === rel.ganttId
+      && panelCol.project_number === pn && panelCol.machine === machine) rel = null;
   panelCol = { project_number: pn, machine, rel: rel || null };
   document.getElementById('view-gantt').classList.add('panel-open');
   // 会議中にタスクリストを開いたら、ガントの高さを確保するため議事録欄を畳む
@@ -64,11 +67,12 @@ function renderTaskPanel() {
     const ready = rp.total > 0 && rp.done === rp.total;
     const box = document.createElement('div');
     box.className = 'tp-rel' + (ready ? ' ready' : '');
-    box.innerHTML = '<b></b><span></span>';
+    box.innerHTML = '<div class="tp-rel-top"><b></b><button class="link tp-rel-all">全項目を表示</button></div><span></span>';
     box.querySelector('b').textContent = `工程「${rel.label}」に必要なタスク　${rp.done}/${rp.total} 完了`;
     box.querySelector('span').textContent = ready
       ? 'すべて完了しています。工程表の完了チェックを付けてよい状態です。'
-      : '黄色の行がこの工程に必要なタスクです。すべて完了すると「完了可」になります。';
+      : 'この工程に必要なタスクだけを表示しています。すべて完了すると「完了可」になります。';
+    box.querySelector('.tp-rel-all').addEventListener('click', () => openTaskPanel(proj.project_number, proj.machine));
     panel.appendChild(box);
   }
 
@@ -79,9 +83,11 @@ function renderTaskPanel() {
   table.innerHTML = '<thead><tr><th class="tl-no">No.</th><th class="tl-name">項目</th><th class="tl-flow">流れ</th><th class="tl-machine"></th></tr></thead>';
   table.querySelector('th.tl-machine').textContent = proj.machine || '(機種なし)';
   const tbody = document.createElement('tbody');
+  const filtered = rel && rel.nos.length;
   PROCESSES.forEach(proc => {
+    if (filtered && !rel.nos.includes(proc.no)) return; // 工程から開いたときは、その工程に必要な項目だけ
     const tr = document.createElement('tr');
-    tr.className = 'dept-' + (PROCESS_DEPT[proc.no] || 'other') + (rel && rel.nos.includes(proc.no) ? ' tl-rel' : '');
+    tr.className = 'dept-' + (PROCESS_DEPT[proc.no] || 'other');
     const tdNo = document.createElement('td'); tdNo.className = 'tl-no'; tdNo.textContent = proc.no;
     const tdName = document.createElement('td'); tdName.className = 'tl-name';
     tdName.innerHTML = '<div class="tl-name-text"></div>';
