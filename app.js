@@ -112,10 +112,18 @@ async function fetchTasks(projectNumbers) {
   }
 }
 
+// 列の一覧。unit の列がまだ DB に無いときは、ユニットなしで読む
+async function fetchColumns() {
+  const res = await sb.from('denki_columns').select('project_number, machine, link_machine, unit, sort_order');
+  if (!res.error) return res;
+  console.warn('denki_columns の unit を読めないため、ユニットなしで表示します', res.error);
+  return sb.from('denki_columns').select('project_number, machine, link_machine, sort_order');
+}
+
 async function loadData() {
   const [completedRes, colRes] = await Promise.all([
     sb.from('completed_projects').select('project_number'),
-    sb.from('denki_columns').select('project_number, machine, link_machine, sort_order'),
+    fetchColumns(),
   ]);
   if (completedRes.error) throw completedRes.error;
   if (colRes.error) throw colRes.error;
@@ -124,7 +132,7 @@ async function loadData() {
   currentProjects = colRes.data
     .filter(c => !completedNums.has(String(c.project_number)))
     .map(c => ({ project_number: String(c.project_number), machine: c.machine,
-                 link_machine: c.link_machine || c.machine, sort_order: c.sort_order }))
+                 link_machine: c.link_machine || c.machine, unit: String(c.unit || '').trim(), sort_order: c.sort_order }))
     .sort((a, b) => a.project_number.localeCompare(b.project_number) || a.sort_order - b.sort_order);
 
   ganttTasks = {}; ganttOther = {}; statusMap = {};
@@ -156,7 +164,7 @@ async function loadData() {
       || (a.sort_order || 0) - (b.sort_order || 0))
     .forEach(t => {
       const pn = String(t.project_number);
-      const cols = currentProjects.filter(p => p.project_number === pn && machineMatches(p.link_machine, t.machine));
+      const cols = currentProjects.filter(p => p.project_number === pn && machineMatches(p.link_machine, t.machine) && unitMatches(p.unit, t.unit));
       if (cols.length) cols.forEach(p => ganttTasks[`${pn}__${p.machine}`].push(t));
       else (ganttOther[pn] = ganttOther[pn] || []).push(t);
     });
@@ -167,6 +175,13 @@ async function loadData() {
       tantousha: s.tantousha, memo: s.memo,
     };
   });
+}
+
+// ユニットの照合。ユニットを決めていない列は機械の工程を全部、ユニットの列はそのユニットと ALL（空欄）の工程を入れる
+function unitMatches(columnUnit, taskUnit) {
+  if (!columnUnit) return true;
+  const u = String(taskUnit || '').trim();
+  return u === columnUnit || u === '' || u.toUpperCase() === 'ALL';
 }
 
 // DB から読み直して全画面を描き直す

@@ -11,7 +11,7 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261105adm">
+  <link rel="stylesheet" href="style.css?v=20261105mg">
 </head>
 <body data-view="gantt">
 
@@ -133,21 +133,41 @@
 <div id="manage-modal">
   <div class="manage-box">
     <div class="manage-header">
-      <h2>工番管理</h2>
+      <div class="manage-title">
+        <h2>工番管理</h2>
+        <span id="manage-status"></span>
+      </div>
+      <button class="btn btn-dark" id="manage-new-open">＋ 工番を追加</button>
       <button class="manage-close" id="manage-close">✕</button>
     </div>
-    <div class="manage-body">
-      <div class="manage-status-bar" id="manage-status"></div>
-      <div class="manage-note">工番と機種は、プルダウンから選ぶか直接入力して「列を追加」を押してください。全体工程表に無い機種名（例: FSBT1）も入力できます。</div>
-      <div class="manage-add-row">
-        <input type="text" id="manage-add-pn" list="manage-pn-list" placeholder="工番" autocomplete="off">
-        <datalist id="manage-pn-list"></datalist>
-        <input type="text" id="manage-add-machine" list="manage-machine-list" placeholder="機種（空欄可）" autocomplete="off">
-        <datalist id="manage-machine-list"></datalist>
-        <button id="manage-add-btn">列を追加</button>
+    <!-- 工番を追加: 工番を選ぶと、全体工程表の機械・ユニットが並ぶ -->
+    <div class="mg-new" id="manage-new" hidden>
+      <div class="mg-new-row">
+        <span class="mg-label">工番</span>
+        <div class="mg-combo">
+          <div class="mg-combo-box">
+            <input type="text" id="manage-pn-input" placeholder="工番を入力・選択" autocomplete="off">
+            <button type="button" id="manage-pn-toggle" tabindex="-1">▼</button>
+          </div>
+          <div class="mg-combo-list" id="manage-pn-list" hidden></div>
+        </div>
+        <span class="mg-new-cust" id="manage-new-cust"></span>
       </div>
-      <div class="manage-list" id="manage-list"></div>
+      <div class="mg-new-machines" id="manage-new-machines" hidden>
+        <div class="mg-new-mhead">
+          <span class="mg-label">表示する機械・ユニット</span>
+          <span class="mg-hint">全体工程表から拾っています。押して選択</span>
+          <button class="link" id="manage-new-all">すべて選択</button>
+        </div>
+        <div class="mg-groups mg-groups-box" id="manage-new-groups"></div>
+      </div>
+      <div class="mg-warn" id="manage-new-warn" hidden>全体工程表に無い工番です。工番の番号を確認してください。</div>
+      <div class="mg-new-btns">
+        <button class="btn" id="manage-new-cancel">やめる</button>
+        <button class="btn btn-dark" id="manage-new-add" disabled>追加</button>
+      </div>
     </div>
+    <div class="manage-body" id="manage-list"></div>
   </div>
 </div>
 
@@ -168,8 +188,8 @@
 <script src="tasklist.js?v=20261104u"></script>
 <script src="taskpanel.js?v=20261104u"></script>
 <script src="gantt.js?v=20261104u"></script>
-<script src="manage.js?v=20261104u"></script>
+<script src="manage.js?v=20261105mg"></script>
 <script src="minutes.js?v=20261104b2"></script>
-<script src="app.js?v=20261105adm"></script>
+<script src="app.js?v=20261105mg"></script>
 </body>
 </html>
