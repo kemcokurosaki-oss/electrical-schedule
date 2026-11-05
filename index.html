@@ -11,7 +11,7 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261105mg">
+  <link rel="stylesheet" href="style.css?v=20261105tp">
 </head>
 <body data-view="gantt">
 
@@ -89,27 +89,31 @@
           <button class="link" id="btn-collapse">工番だけ表示</button>
           <div class="gantt-legend" id="gantt-legend"></div>
         </div>
-        <div id="gantt-wrap">
-          <div id="gantt-container"></div>
-          <div id="gantt-empty" hidden>条件に合う工程はありません</div>
-        </div>
-        <!-- 下の議事録欄 -->
-        <section id="min-dock">
-          <div class="dock-head">
-            <button class="dock-toggle" id="dock-toggle" title="開く">▲</button>
-            <span class="dock-title">議事録</span>
-            <select id="dock-date" class="dock-date" title="表示する議事録の日付（過去の回も選べます）"></select>
-            <span class="past-tag" id="dock-past" hidden>過去の議事録</span>
-            <span class="dock-meta" id="dock-meta"></span>
-            <span id="dock-save"></span>
+        <div id="gantt-body">
+          <div id="gantt-main">
+            <div id="gantt-wrap">
+              <div id="gantt-container"></div>
+              <div id="gantt-empty" hidden>条件に合う工程はありません</div>
+            </div>
+            <!-- 下の議事録欄（ガントの下だけ） -->
+            <section id="min-dock">
+              <div class="dock-head">
+                <button class="dock-toggle" id="dock-toggle" title="開く">▲</button>
+                <span class="dock-title">議事録</span>
+                <select id="dock-date" class="dock-date" title="表示する議事録の日付（過去の回も選べます）"></select>
+                <span class="past-tag" id="dock-past" hidden>過去の議事録</span>
+                <span class="dock-meta" id="dock-meta"></span>
+                <span id="dock-save"></span>
+              </div>
+              <div class="dock-tabbar" id="dock-tabbar"></div>
+              <div class="dock-body" id="dock-body"></div>
+            </section>
           </div>
-          <div class="dock-tabbar" id="dock-tabbar"></div>
-          <div class="dock-body" id="dock-body"></div>
-        </section>
+          <!-- 機械の行を押すと出る、その機械のタスクリスト（縦いっぱい）。閉じているときは細いカード -->
+          <button id="tl-tab" type="button" title="タスクリストを開く"></button>
+          <aside id="tl-panel"></aside>
+        </div>
       </div>
-      <!-- 機械の行を押すと出る、その機械のタスクリスト -->
-      <button id="tl-tab">タスクリスト</button>
-      <aside id="tl-panel"></aside>
     </div>
 
     <!-- タスクリストビュー -->
@@ -186,7 +190,7 @@
 <script src="state.js?v=20261104u"></script>
 <script src="utils.js?v=20261104u"></script>
 <script src="tasklist.js?v=20261104u"></script>
-<script src="taskpanel.js?v=20261104u"></script>
+<script src="taskpanel.js?v=20261105tp"></script>
 <script src="gantt.js?v=20261104u"></script>
 <script src="manage.js?v=20261105mg"></script>
 <script src="minutes.js?v=20261104b2"></script>

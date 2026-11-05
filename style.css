@@ -340,34 +340,62 @@ body.bar-status .ds-ship  { background: #f6ad55; }
 .rt-view { font-size: 13px; line-height: 1.75; overflow-wrap: anywhere; }
 .rt-empty { color: #a2abb5; }
 
-/* ガント横のタスクリスト（右側のパネル） */
+/* ガント横のタスクリスト（右側のカード）。ガントと議事録欄の右に、縦いっぱいに出す */
+#gantt-body { flex: 1; min-height: 0; display: flex; gap: 8px; }
+#gantt-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+
+/* 閉じているとき: 細いカード（議事録欄と同じ白いカード・グレーの見出し）。機械名と完了数を出す */
 #tl-tab {
-  width: 36px; flex-shrink: 0; background: #2a2f35; color: #fff; border: none; writing-mode: vertical-rl;
-  letter-spacing: 3px; font-size: 13px; font-weight: 700; padding-top: 16px; cursor: pointer; display: flex; align-items: center;
+  width: 44px; flex-shrink: 0; padding: 0; background: #fff; border: 1px solid #d5d9de; border-radius: 8px;
+  display: flex; flex-direction: column; align-items: center; overflow: hidden; cursor: pointer; color: #2a2f35;
 }
-#tl-tab:hover { background: #3d444d; }
+#tl-tab:hover { border-color: #a2abb5; }
 #view-gantt.panel-open #tl-tab { display: none; }
+.tt-head { width: 100%; height: 40px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; background: #f5f6f7; border-bottom: 1px solid #d5d9de; font-size: 14px; }
+.tt-title { writing-mode: vertical-rl; font-size: 14px; font-weight: 700; letter-spacing: 2px; padding: 14px 0 10px; }
+.tt-sep { width: 20px; height: 1px; flex-shrink: 0; background: #e3e6ea; margin-bottom: 10px; }
+.tt-machine { writing-mode: vertical-rl; font-size: 11.5px; color: #5b636c; padding-bottom: 10px; max-height: 45%; overflow: hidden; }
+.tt-done { font-size: 10.5px; font-weight: 700; }
+.tt-total { font-size: 10px; color: #8a929b; line-height: 1; }
+
+/* 開いているとき */
 #tl-panel {
-  display: none; width: 440px; flex-shrink: 0; background: #fff; border-left: 1px solid #d5d9de;
-  box-shadow: -6px 0 18px rgba(42,47,53,.10); flex-direction: column; overflow: hidden;
+  display: none; width: 400px; flex-shrink: 0; background: #fff; border: 1px solid #d5d9de; border-radius: 8px;
+  flex-direction: column; overflow: hidden;
 }
 #view-gantt.panel-open #tl-panel { display: flex; }
-.tp-head { height: 48px; flex-shrink: 0; display: flex; align-items: center; gap: 8px; padding: 0 14px; background: #2a2f35; color: #fff; }
-.tp-title { font-size: 14px; font-weight: 700; }
-.tp-sub { font-size: 12px; color: #b7bfc8; }
-.tp-close { margin-left: auto; width: 28px; height: 28px; border: none; border-radius: 6px; background: transparent; color: #e3e6ea; cursor: pointer; font-size: 14px; }
-.tp-close:hover { background: #3d444d; }
-.tp-machines { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 14px; border-bottom: 1px solid #e3e6ea; background: #f5f6f7; }
-.tp-machine-btn { font-size: 12px; font-weight: 700; padding: 4px 12px; border-radius: 6px; border: 1px solid #c9ced4; background: #fff; color: #2a2f35; cursor: pointer; }
-.tp-machine-btn.active { background: #2a2f35; color: #fff; border-color: #2a2f35; }
-.tp-rel { padding: 8px 14px; background: #fff8e6; border-bottom: 1px solid #f0d08a; display: flex; align-items: baseline; gap: 10px; }
+.tp-head { height: 40px; flex-shrink: 0; display: flex; align-items: center; gap: 12px; padding: 0 14px; background: #f5f6f7; border-bottom: 1px solid #d5d9de; }
+.tp-close { width: 22px; height: 22px; flex-shrink: 0; margin-left: -4px; display: flex; align-items: center; justify-content: center; padding: 0; font-size: 14px; line-height: 1; color: #2a2f35; background: none; border: none; border-radius: 6px; cursor: pointer; }
+.tp-close:hover { background: #e3e6ea; }
+.tp-title { font-size: 14px; font-weight: 700; white-space: nowrap; }
+.tp-sub { font-size: 11.5px; color: #7c858f; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+/* 機械の切り替え（.seg と同じ形。各機械の完了数つき） */
+.tp-machines { flex-shrink: 0; margin: 10px 14px 0; }
+.tp-machines button { flex: 1; min-width: 0; display: flex; flex-direction: column; align-items: center; padding: 4px 6px; font-size: 12px; line-height: 1.35; }
+.tp-machine-name { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tp-machine-count { font-size: 10.5px; font-weight: 400; opacity: .8; }
+/* 状態の絞り込み（1行の小さな切り替え） */
+.tp-filter-row { flex-shrink: 0; padding: 8px 14px; border-bottom: 1px solid #d5d9de; }
+.tp-filter { padding: 2px; border-radius: 7px; }
+.tp-filter button { flex: 1; display: flex; align-items: center; justify-content: center; gap: 3px; padding: 2px 4px; border-radius: 5px; font-size: 11.5px; }
+.tp-filter-n { font-size: 10.5px; font-weight: 400; opacity: .85; }
+/* 工程の行から開いたとき */
+.tp-rel { flex-shrink: 0; padding: 8px 14px; background: #fff8e6; border-bottom: 1px solid #f0d08a; display: flex; align-items: center; gap: 10px; }
 .tp-rel b { font-size: 12.5px; min-width: 0; }
-.tp-rel-count { margin-left: auto; font-size: 12.5px; font-weight: 700; white-space: nowrap; color: #8a5a00; }
-.tp-rel-all { margin-left: auto; align-self: center; font-size: 11.5px; }
+.tp-rel-count { font-size: 12.5px; font-weight: 700; white-space: nowrap; color: #8a5a00; }
+.tp-rel-all { margin-left: auto; font-size: 11.5px; }
 .tp-rel.ready { background: #dcf1e4; border-color: #a6d8b8; }
 .tp-rel.ready .tp-rel-count { color: #1d6b3f; }
-.tp-scroll { flex: 1; overflow: auto; }
-.tp-table .tl-name { min-width: 0; max-width: 220px; }
+.tp-scroll { flex: 1; min-height: 0; overflow: auto; }
+.tp-empty { padding: 24px 14px; color: #8a929b; font-size: 12.5px; }
+.tp-table th { height: 30px; }
+.tp-table td { height: 40px; padding-top: 4px; padding-bottom: 4px; }
+.tp-table .tl-no { width: 32px; }
+.tp-table .tl-name { min-width: 0; }
+.tp-table th.tl-st, .tp-table td.tl-cell { width: 104px; }
+.tp-table .tl-name-text { white-space: normal; font-size: 12.5px; font-weight: 500; line-height: 1.35; text-wrap: pretty; }
+.tp-table .tl-name-kotei { font-size: 10.5px; line-height: 1.35; }
+.tp-table .st-pill { width: 88px; }
 .tl-name-text { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .tl-name-kotei { font-size: 10px; color: #8a929b; line-height: 1.2; }
 .tl-table tr.tl-rel td { background: #fff8e6; }
