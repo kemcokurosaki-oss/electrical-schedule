@@ -3,7 +3,7 @@ const S_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJl
 const sb = supabase.createClient(S_URL, S_KEY);
 // 編集できる人（DB の is_core_admin と同じ）。それ以外の人は閲覧のみ
 const EDITORS = ['e-kurosaki@kusakabe.com', 's-morimura@kusakabe.com', 'm2-kusakabe@kusakabe.com']; // 黒崎・森村・常務
-M365Login.init(sb, { appName: '電気工程表', mountAfter: '#btn-manage',
+M365Login.init(sb, { appName: '電気工程表', mountAfter: '#nav-user-anchor',
   canEdit: (email) => EDITORS.includes(email.toLowerCase()) });
 
 // ─── 工程定義 ───────────────────────────────────────────

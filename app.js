@@ -190,12 +190,12 @@ async function refreshDisplay() {
   hideLoading();
 }
 
-// ログイン中の人が編集できるか。閲覧のみの人には工番管理を出さず、タスクリスト・議事録は表示だけにする
+// ログイン中の人が編集できるか。閲覧のみの人には管理者メニュー（工番管理）を出さず、タスクリスト・議事録は表示だけにする
 async function setupEditPermission() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;
   canEdit = EDITORS.includes(String(user?.email || '').toLowerCase());
-  document.getElementById('btn-manage').style.display = canEdit ? '' : 'none';
+  document.getElementById('nav-admin').hidden = !canEdit; // 管理者メニューは管理者だけ
   document.body.classList.toggle('read-only', !canEdit);
 
   myName = '';

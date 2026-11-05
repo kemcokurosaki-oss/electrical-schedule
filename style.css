@@ -74,7 +74,15 @@ a { color: #2a2f35; }
 .np-dot { width: 7px; height: 7px; border-radius: 50%; }
 .np-dot.late { background: #d64545; }
 .np-dot.soon { background: #e8a317; }
+.nav-admin { margin-top: auto; border-top: 1px solid #3a4048; padding-top: 4px; display: flex; flex-direction: column; gap: 8px; }
+.nav-admin-label { padding-bottom: 0; }
+.nav-admin-btn {
+  width: 100%; padding: 8px 10px; border: 1px solid #5b636c; border-radius: 6px; background: transparent;
+  color: #e3e6ea; font-size: 13px; font-weight: 700; cursor: pointer; white-space: nowrap; text-align: center;
+}
+.nav-admin-btn:hover { background: #353b43; border-color: #7c858f; color: #fff; }
 .nav-bottom { margin-top: auto; border-top: 1px solid #3a4048; padding-top: 8px; display: flex; flex-direction: column; gap: 2px; }
+.nav-admin:not([hidden]) + .nav-bottom { margin-top: 12px; }
 
 /* ログイン中のユーザー表示（m365-login.js）を左メニューに合わせる */
 #side-nav #m365_user_chip { margin: 4px 0; padding: 4px 6px; color: #e3e6ea; }
@@ -97,6 +105,8 @@ body.nav-compact .np-customer,
 body.nav-compact #m365_user_btn .m365-user-label { display: none; }
 body.nav-compact .nav-short { display: inline; }
 body.nav-compact .nav-item { justify-content: center; padding: 9px 0; font-size: 11px; }
+body.nav-compact .nav-admin { padding-top: 8px; }
+body.nav-compact .nav-admin-btn { padding: 8px 0; font-size: 11px; }
 body.nav-compact #nav-projects { border-top: 1px solid #3a4048; margin-top: 8px; padding-top: 8px; }
 body.nav-compact .np-item { align-items: center; padding: 7px 0; }
 body.nav-compact .np-pn { font-size: 12px; }
