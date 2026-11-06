@@ -638,7 +638,8 @@ body[data-view="minutes"] .lamp { display: none; }
 .pv-group-head { padding: 4px 0; border-bottom: 1px solid #c9ced4; display: flex; gap: 10px; align-items: baseline; }
 .pv-group-head b { font-size: 13.5px; }
 .pv-group-head span { color: #5b636c; }
-.pv-row { display: grid; grid-template-columns: 80px minmax(0, 1fr); border-bottom: 1px solid #e3e6ea; }
+.pv-row { display: grid; grid-template-columns: 170px minmax(0, 1fr); border-bottom: 1px solid #e3e6ea; }
+.pv-machine { padding: 8px 4px 2px; font-weight: 700; font-size: 12.5px; color: #2a2f35; border-bottom: 2px solid #d5d9de; }
 .pv-row-title { padding: 6px 4px; font-weight: 700; }
 .pv-row-body { padding: 6px 4px; line-height: 1.7; overflow-wrap: anywhere; }
 
@@ -650,3 +651,75 @@ body[data-view="minutes"] .lamp { display: none; }
   .pv-page { width: auto; min-height: 0; padding: 0; box-shadow: none; }
   * { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+
+/* ─── ガントの画面はガントチャートだけ（右のタスクリスト・下の議事録欄は出さない） ─── */
+#view-gantt.simple #tl-tab, #view-gantt.simple #tl-panel, #view-gantt.simple #min-dock { display: none !important; }
+
+/* ─── 工程確認表（メイン画面） ─────────────────────────── */
+#view-sheet.active { display: flex; flex-direction: column; padding: 10px 16px 14px; gap: 8px; }
+#sheet-tools { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
+.sheet-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
+#sheet-save .save-controls { gap: 8px; }
+#sheet-rt { margin-left: auto; }
+#sheet-wrap { flex: 1; min-height: 0; overflow: auto; background: #fff; border: 1px solid #d5d9de; border-radius: 8px; }
+
+.sh-table { border-collapse: separate; border-spacing: 0; font-size: 12px; }
+.sh-table th, .sh-table td { border-right: 1px solid #e3e6ea; border-bottom: 1px solid #e3e6ea; background: #fff; }
+/* 見出しの3段は上に固定（段の高さを決めて、2段目・3段目の位置をずらす） */
+.sh-table thead th { position: sticky; z-index: 2; background: #f5f6f7; color: #5b636c; font-weight: 700; padding: 0 8px; white-space: nowrap; }
+.sh-h1 th { top: 0; height: 30px; }
+.sh-h2 th { top: 30px; height: 30px; }
+.sh-h3 th { top: 60px; height: 22px; font-size: 10.5px; font-weight: 500; color: #7c858f; }
+/* 左の No.・項目・流れは横に固定 */
+.sh-table .sh-no, .sh-table .sh-name, .sh-table .sh-flow { position: sticky; z-index: 1; }
+.sh-table thead .sh-no, .sh-table thead .sh-name, .sh-table thead .sh-flow { z-index: 3; top: 0; text-align: left; }
+.sh-no { left: 0; width: 34px; min-width: 34px; text-align: right !important; color: #8a929b; }
+.sh-name { left: 34px; width: 210px; min-width: 210px; position: relative; padding: 4px 8px 4px 14px !important; font-weight: 500; line-height: 1.35; }
+.sh-flow { left: 244px; width: 74px; min-width: 74px; font-size: 11px; color: #7c858f; padding: 0 6px !important; border-right: 2px solid #c9ced4 !important; white-space: nowrap; }
+tbody .sh-name::before { content: ''; position: absolute; left: 5px; top: 8px; bottom: 8px; width: 3px; border-radius: 2px; background: #e3e6ea; }
+.sh-table tr.dept-eigyo  .sh-name::before { background: #e8a54b; }
+.sh-table tr.dept-sekkei .sh-name::before { background: #4a90c8; }
+.sh-table tr.dept-denki  .sh-name::before { background: #e07aab; }
+.sh-table tr.dept-sosou  .sh-name::before { background: #e06060; }
+.sh-table tr.dept-denso  .sh-name::before { background: #a97dd9; }
+
+.sh-pn { text-align: left; }
+.sh-pn b { font-size: 14px; color: #2a2f35; margin-right: 8px; }
+.sh-pn span { font-size: 11.5px; font-weight: 500; }
+.sh-machine { text-align: left; }
+.sh-mname { font-size: 13px; color: #2a2f35; }
+.sh-mprog { margin-left: 8px; font-size: 10.5px; font-weight: 500; color: #7c858f; }
+.sh-table .sh-gap { border-left: 3px solid #c9ced4; } /* 工番の区切り */
+
+.sh-table tbody td { vertical-align: top; }
+.sh-ds { width: 122px; min-width: 122px; padding: 4px 6px; text-align: center; }
+.sh-date-input { width: 110px; height: 24px; margin-bottom: 3px; padding: 0 4px; font-size: 11.5px; border: 1px solid #d5d9de; border-radius: 5px; color: #2a2f35; background: #fff; }
+.sh-date { height: 20px; font-size: 12px; }
+.sh-date-input.empty:not(:focus):not(:hover) { color: #c9ced4; border-color: #eef0f2; }
+.sh-ds .st-pill { width: 110px; }
+.sh-ds.st-na { background: #fafbfb; }
+.sh-ds.st-na .sh-date-input { color: #a2abb5; }
+.sh-ds.due-late .sh-date-input, .sh-ds.due-late .sh-date { color: #c03030; font-weight: 700; border-color: #f2b8b8; background: #fdeaea; }
+.sh-ds.due-soon .sh-date-input, .sh-ds.due-soon .sh-date { color: #8a5a00; font-weight: 700; border-color: #f0d08a; background: #fdf3dc; }
+.sh-memo { width: 230px; min-width: 230px; max-width: 230px; padding: 3px; }
+.sh-memo .rt-editor, .sh-memo .rt-view { min-height: 52px; max-height: 150px; overflow-y: auto; padding: 3px 6px; font-size: 12px; line-height: 1.55; border-color: transparent; }
+.sh-memo .rt-editor:hover { border-color: #d5d9de; }
+.sh-memo .rt-editor:focus { border-color: #2a2f35; max-height: none; }
+.sh-memo .rt-editor.dirty { border-color: #e8a317; }
+.sh-other td, .sh-other .sh-name { background: #fafbfb; }
+.sh-other-label { font-size: 11px; color: #8a929b; vertical-align: middle !important; }
+.sh-ship td { height: 30px; vertical-align: middle !important; font-weight: 700; background: #f5f6f7; }
+.sh-ship td.sh-ds { text-align: left; padding-left: 10px; }
+
+/* 議事録の画面: 機械ごとの欄（項目ごとのメモ＋その他） */
+.mn-showall { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; color: #5b636c; cursor: pointer; white-space: nowrap; }
+.mn-machine { border-top: 1px solid #e3e6ea; padding: 10px 16px 14px; }
+.mn-card-head + .mn-machine { border-top: none; }
+.mn-machine-head { font-size: 14px; font-weight: 700; margin-bottom: 6px; padding-left: 8px; border-left: 3px solid #2a2f35; }
+.mn-item { display: grid; grid-template-columns: 230px minmax(0, 1fr); gap: 10px; padding: 5px 0; border-bottom: 1px dashed #eef0f2; }
+.mn-item-title { font-size: 12.5px; font-weight: 700; color: #5b636c; padding-top: 6px; }
+.mn-item-body .rt-editor, .mn-item-body .rt-view { min-height: 34px; font-size: 13.5px; line-height: 1.7; }
+.mn-item-other .mn-item-title { color: #2a2f35; }
+.mn-item-other .rt-editor { min-height: 60px; }
+.mn-item-empty { font-size: 12.5px; color: #a2abb5; padding: 4px 8px; }

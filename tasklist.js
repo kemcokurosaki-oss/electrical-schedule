@@ -4,6 +4,7 @@ const tasklistCollapsed = new Set(); // 折りたたんでいる工番
 
 function renderTaskList() {
   const wrap = document.getElementById('tasklist-wrapper');
+  if (!wrap) return; // タスクリストの画面は工程確認表に置き換えた（ガント横のパネル用に保存の処理だけ残す）
   wrap.innerHTML = '';
   if (currentProjects.length === 0) {
     const p = document.createElement('div');

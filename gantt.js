@@ -226,10 +226,13 @@ function buildGanttData() {
 }
 
 // 行を押したとき: 右にその機械のタスクリスト、下の議事録欄をその工番・機械の欄に切り替える
+// ※ 今はガントの画面をガントチャートだけにしているので（GANTT_SIDE_PANELS=false）、選んだ工番を覚えるだけ
+const GANTT_SIDE_PANELS = false;
 function onGanttRowClick(id) {
   const t = gantt.getTask(id);
   const pn = t.pn;
   selectedPn = pn;
+  if (!GANTT_SIDE_PANELS) { renderNavProjects(); return; }
   if (t.rowType === 'project') {
     const col = currentProjects.find(p => p.project_number === pn);
     if (col) openTaskPanel(pn, col.machine);

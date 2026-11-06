@@ -11,9 +11,9 @@
   <script src="m365-login.js"></script>
   <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
   <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261105tp">
+  <link rel="stylesheet" href="style.css?v=20261106sh">
 </head>
-<body data-view="gantt">
+<body data-view="sheet">
 
 <div id="loading-overlay" class="visible">読み込み中...</div>
 
@@ -30,8 +30,8 @@
       <button class="nav-collapse" id="nav-collapse" type="button" title="メニューを縮める"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M16 10l-2 2 2 2"/></svg></button>
     </div>
     <div class="nav-label">画面</div>
-    <button class="nav-item active" id="tab-gantt" title="ガントチャート"><span class="nav-dot"></span><span class="nav-full">ガントチャート</span><span class="nav-short">ガント</span></button>
-    <button class="nav-item" id="tab-tasklist" title="タスクリスト"><span class="nav-dot"></span><span class="nav-full">タスクリスト</span><span class="nav-short">タスク</span></button>
+    <button class="nav-item active" id="tab-sheet" title="工程確認表"><span class="nav-dot"></span><span class="nav-full">工程確認表</span><span class="nav-short">確認表</span></button>
+    <button class="nav-item" id="tab-gantt" title="ガントチャート"><span class="nav-dot"></span><span class="nav-full">ガントチャート</span><span class="nav-short">ガント</span></button>
     <button class="nav-item" id="tab-minutes" title="議事録"><span class="nav-dot"></span><span class="nav-full">議事録</span><span class="nav-short">議事録</span></button>
     <div class="nav-label">工事番号</div>
     <div id="nav-projects"></div>
@@ -49,7 +49,7 @@
   <div id="main">
     <!-- 上部バー -->
     <header id="app-bar">
-      <div class="bar-title"><span id="view-title">ガントチャート</span><span id="view-sub"></span></div>
+      <div class="bar-title"><span id="view-title">工程確認表</span><span id="view-sub"></span></div>
       <button class="lamp late" id="late-lamp" title="遅れている工程だけを表示"><span class="lamp-dot"></span>遅れ <span id="late-count">0</span>件</button>
       <button class="lamp soon" id="soon-lamp"><span class="lamp-dot"></span>注意 <span id="soon-count">0</span>件</button>
       <div class="bar-meta" id="minutes-meta"></div><!-- 議事録の画面だけ（引き継ぎ元・最終更新） -->
@@ -62,8 +62,14 @@
       </div>
     </header>
 
-    <!-- ガントビュー（メイン） -->
-    <div id="view-gantt" class="view active">
+    <!-- 工程確認表（メイン）: 行が項目、列が工番の機械（予定日・状態＋メモ）。メモは議事録の欄 -->
+    <div id="view-sheet" class="view active">
+      <div id="sheet-tools"></div>
+      <div id="sheet-wrap"></div>
+    </div>
+
+    <!-- ガントビュー（ガントチャートだけ。右のタスクリストと下の議事録欄は今は出さない＝ .simple） -->
+    <div id="view-gantt" class="view simple">
       <div id="gantt-col">
         <div class="filter-row" id="gantt-filters">
           <span class="f-title">絞り込み</span>
@@ -114,11 +120,6 @@
           <aside id="tl-panel"></aside>
         </div>
       </div>
-    </div>
-
-    <!-- タスクリストビュー -->
-    <div id="view-tasklist" class="view">
-      <div id="tasklist-wrapper"></div>
     </div>
 
     <!-- 議事録ビュー -->
@@ -189,11 +190,12 @@
 <script src="config.js?v=20261105adm"></script>
 <script src="state.js?v=20261104u"></script>
 <script src="utils.js?v=20261104u"></script>
-<script src="tasklist.js?v=20261104u"></script>
+<script src="tasklist.js?v=20261106sh"></script>
 <script src="taskpanel.js?v=20261105tp"></script>
-<script src="gantt.js?v=20261104u"></script>
+<script src="gantt.js?v=20261106sh"></script>
 <script src="manage.js?v=20261105mg"></script>
-<script src="minutes.js?v=20261104b2"></script>
-<script src="app.js?v=20261105mg"></script>
+<script src="minutes.js?v=20261106sh"></script>
+<script src="sheet.js?v=20261106sh"></script>
+<script src="app.js?v=20261106sh"></script>
 </body>
 </html>

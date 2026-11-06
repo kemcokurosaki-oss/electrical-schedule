@@ -38,9 +38,10 @@ function minutesError(e) {
   alert(`保存できませんでした。入力した内容は画面に残っています。\n${e.message || e}\n\nログインが切れている場合は、入力内容を控えてからページを再読み込みしてください。`);
 }
 
+// 欄のキー「工番|機械|項目番号」→ [工番, 機械, 項目番号]（項目 0 は機械ごとの「その他」）
 function splitKey(key) {
-  const i = key.indexOf('|');
-  return [key.slice(0, i), key.slice(i + 1)];
+  const i = key.indexOf('|'), j = key.lastIndexOf('|');
+  return [key.slice(0, i), key.slice(i + 1, j), Number(key.slice(j + 1)) || 0];
 }
 
 // ─── 読み込み ─────────────────────────────────────────
@@ -222,11 +223,11 @@ async function loadMeetingData(meeting) {
   if (minutesCache[meeting.id]) return minutesCache[meeting.id];
   const [mRes, nRes] = await Promise.all([
     sb.from('denki_meetings').select('decisions').eq('id', meeting.id).single(),
-    sb.from('denki_meeting_notes').select('project_number, machine, body').eq('meeting_id', meeting.id),
+    sb.from('denki_meeting_notes').select('project_number, machine, process_no, body').eq('meeting_id', meeting.id),
   ]);
   if (mRes.error || nRes.error) throw (mRes.error || nRes.error);
   const notes = {};
-  nRes.data.forEach(n => { notes[`${n.project_number}|${n.machine || ''}`] = n.body; });
+  nRes.data.forEach(n => { notes[noteKey(n.project_number, n.machine, n.process_no)] = n.body; });
   return (minutesCache[meeting.id] = { decisions: mRes.data.decisions, notes });
 }
 
@@ -241,8 +242,9 @@ function noteGroups(data) {
     if (!byPn[pn]) { byPn[pn] = { pn, customer: customer || '', slots: [] }; groups.push(byPn[pn]); }
     return byPn[pn];
   };
+  // slot.key は機械の「その他」欄（項目 0）。項目ごとのメモは machineItemNotes() で取る
   const addSlot = (g, machine) => {
-    const key = `${g.pn}|${machine}`;
+    const key = noteKey(g.pn, machine, 0);
     if (!g.slots.some(s => s.key === key)) g.slots.push({ key, machine, title: machine || '工番共通' });
   };
   currentProjects.forEach(p => addSlot(group(p.project_number, p.customer_name), p.machine || ''));
@@ -250,6 +252,22 @@ function noteGroups(data) {
   Object.keys(data ? data.notes : {}).forEach(k => { const [pn, machine] = splitKey(k); addSlot(group(pn), machine); });
   groups.forEach(g => g.slots.sort((a, b) => (a.machine === '') - (b.machine === '')));
   return groups;
+}
+
+// 工番に記入があるか（項目のメモ・その他のどれか）
+function pnHasNotes(data, pn) {
+  return Object.keys(data.notes).some(k => k.startsWith(pn + '|') && data.notes[k]);
+}
+function machineHasNotes(data, pn, machine) {
+  return Object.keys(data.notes).some(k => { const [p, m] = splitKey(k); return p === pn && m === machine && data.notes[k]; });
+}
+
+// 機械の項目ごとのメモ [{ no, name, key, body }]（項目の順）。all=true はメモの無い項目も入れる
+function machineItemNotes(data, pn, machine, all) {
+  return PROCESSES.map(p => {
+    const key = noteKey(pn, machine, p.no);
+    return { no: p.no, name: p.name, key, body: data.notes[key] };
+  }).filter(x => all || x.body);
 }
 
 // ─── 書式付きの入力欄 ─────────────────────────────────
@@ -570,7 +588,7 @@ function renderMinutesMain(meeting, data) {
     tabs.appendChild(b);
   };
   tab('全体', '__all', '全体の決定事項', false);
-  groups.forEach(g => tab(g.pn, g.pn, `${g.pn}　${g.customer}`, g.slots.some(s => data.notes[s.key])));
+  groups.forEach(g => tab(g.pn, g.pn, `${g.pn}　${g.customer}`, pnHasNotes(data, g.pn)));
   top.appendChild(tabs);
 
   // 選んだタブの欄（見出しの行の右端に書式のボタン）
@@ -585,8 +603,17 @@ function renderMinutesMain(meeting, data) {
     ttl.querySelector('b').textContent = pn;
     ttl.querySelector('span').textContent = customer || '';
     h.appendChild(ttl);
+    if (pn !== '全体' && canEdit) { // メモの無い項目も出して書き込めるようにする
+      const all = document.createElement('label');
+      all.className = 'mn-showall';
+      all.innerHTML = '<input type="checkbox"> メモの無い項目も表示';
+      all.firstChild.checked = minutesShowAll;
+      all.firstChild.addEventListener('change', async e => { minutesShowAll = e.target.checked; await flushEditors(); renderMinutesMain(meeting, data); });
+      h.appendChild(all);
+    }
     h.appendChild(canEdit ? createRichToolbar() : richLegend());
     c.appendChild(h);
+    if (pn !== '全体') { slots.forEach(s => c.appendChild(machineSection(meeting, data, pn, s))); return c; }
     slots.forEach(s => {
       const row = document.createElement('div');
       row.className = 'mn-row';
@@ -612,6 +639,39 @@ function renderMinutesMain(meeting, data) {
   main.appendChild(c);
 }
 
+// 議事録の画面の、機械1台分の欄: 機械名の見出し → 項目ごとのメモ（工程確認表のメモと同じもの）→ その他
+let minutesShowAll = false; // メモの無い項目も表示する
+function machineSection(meeting, data, pn, slot) {
+  const sec = document.createElement('div');
+  sec.className = 'mn-machine';
+  const h = document.createElement('div');
+  h.className = 'mn-machine-head';
+  h.textContent = slot.title;
+  sec.appendChild(h);
+  const items = machineItemNotes(data, pn, slot.machine, minutesShowAll && canEdit);
+  const line = (label, key, body, cls) => {
+    const r = document.createElement('div');
+    r.className = 'mn-item' + (cls ? ' ' + cls : '');
+    const t = document.createElement('div');
+    t.className = 'mn-item-title';
+    t.textContent = label;
+    const b = document.createElement('div');
+    b.className = 'mn-item-body';
+    b.appendChild(createEditor(meeting, key, body));
+    r.appendChild(t); r.appendChild(b);
+    sec.appendChild(r);
+  };
+  items.forEach(it => line(`${it.no}. ${it.name}`, it.key, it.body));
+  if (canEdit || data.notes[slot.key]) line('その他', slot.key, data.notes[slot.key], 'mn-item-other');
+  if (!items.length && !canEdit && !data.notes[slot.key]) {
+    const e = document.createElement('div');
+    e.className = 'mn-item-empty';
+    e.textContent = '記入なし';
+    sec.appendChild(e);
+  }
+  return sec;
+}
+
 // ─── 下の議事録欄（ガントの画面） ─────────────────────
 function setDockOpen(open) {
   dockOpen = open;
@@ -635,6 +695,7 @@ function setDockKey(pn, machine) {
 }
 
 async function renderDock() {
+  if (currentView === 'sheet') renderSheet(); // 議事録の回が変わったら、工程確認表のメモもその回にそろえる
   const ds = document.getElementById('dock-save');
   if (!ds.firstChild) {
     if (canEdit) ds.appendChild(createSaveControls());
@@ -679,7 +740,7 @@ async function renderDock() {
     b.className = 'mn-tab' + (s.key === dockKey ? ' active' : '');
     b.textContent = s.label;
     b.title = s.title;
-    if (s.group && s.group.slots.some(x => data.notes[x.key])) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
+    if (s.group && pnHasNotes(data, s.group.pn)) { const d = document.createElement('span'); d.className = 'mn-tab-dot'; d.title = '記入あり'; b.appendChild(d); }
     b.addEventListener('click', async () => {
       await flushEditors();
       dockKey = s.key; dockMachine = null;
@@ -772,8 +833,8 @@ async function createMinutes(dateStr, source) {
 
   if (prevData) {
     const rows = Object.entries(prevData.notes).filter(([, body]) => body).map(([k, body]) => {
-      const [pn, machine] = splitKey(k);
-      return { meeting_id: data.id, project_number: pn, machine, body, updated_by: email };
+      const [pn, machine, process_no] = splitKey(k);
+      return { meeting_id: data.id, project_number: pn, machine, process_no, body, updated_by: email };
     });
     if (rows.length) {
       const r = await sb.from('denki_meeting_notes').insert(rows);
@@ -808,15 +869,15 @@ async function saveDecisions(meetingId, body) {
   return true;
 }
 
-async function saveNote(meetingId, pn, machine, body) {
+async function saveNote(meetingId, pn, machine, process_no, body) {
   let res;
   if (body) {
     res = await sb.from('denki_meeting_notes').upsert(
-      { meeting_id: meetingId, project_number: pn, machine, body, updated_at: new Date().toISOString(), updated_by: await currentEmail() },
-      { onConflict: 'meeting_id,project_number,machine' });
+      { meeting_id: meetingId, project_number: pn, machine, process_no, body, updated_at: new Date().toISOString(), updated_by: await currentEmail() },
+      { onConflict: 'meeting_id,project_number,machine,process_no' });
   } else {
     res = await sb.from('denki_meeting_notes').delete()
-      .eq('meeting_id', meetingId).eq('project_number', pn).eq('machine', machine);
+      .eq('meeting_id', meetingId).eq('project_number', pn).eq('machine', machine).eq('process_no', process_no);
   }
   if (res.error) { minutesError(res.error); return false; }
   // 工番の欄を直したときも、議事録の回の「最終更新」を新しくする
@@ -875,7 +936,29 @@ async function openPrint(meeting) {
     return g;
   };
   page.appendChild(group('全体', '', [{ key: '__all', title: '決定事項' }]));
-  noteGroups(data).forEach(g => page.appendChild(group(g.pn, g.customer, g.slots)));
+  // 工番ごと: 記入のある機械だけ、項目のメモ → その他 の順（記入の無い工番は出さない）
+  noteGroups(data).forEach(g => {
+    if (!pnHasNotes(data, g.pn)) return;
+    const el = group(g.pn, g.customer, []);
+    g.slots.forEach(s => {
+      if (!machineHasNotes(data, g.pn, s.machine)) return;
+      const mh = document.createElement('div');
+      mh.className = 'pv-machine';
+      mh.textContent = s.title;
+      el.appendChild(mh);
+      const lines = machineItemNotes(data, g.pn, s.machine, false).map(it => [`${it.no}. ${it.name}`, it.body]);
+      if (data.notes[s.key]) lines.push(['その他', data.notes[s.key]]);
+      lines.forEach(([title, body]) => {
+        const row = document.createElement('div');
+        row.className = 'pv-row';
+        const t = document.createElement('div'); t.className = 'pv-row-title'; t.textContent = title;
+        const b = document.createElement('div'); b.className = 'pv-row-body'; b.innerHTML = richFromStored(body);
+        row.appendChild(t); row.appendChild(b);
+        el.appendChild(row);
+      });
+    });
+    page.appendChild(el);
+  });
   document.getElementById('print-view').classList.add('open');
 }
 document.getElementById('pv-print').addEventListener('click', () => window.print());

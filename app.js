@@ -1,26 +1,27 @@
 // ─── 画面切替（左メニュー） ──────────────────────────────
-let currentView = 'gantt';
-const VIEW_TITLES = { gantt: 'ガントチャート', tasklist: 'タスクリスト', minutes: '議事録' };
+let currentView = 'sheet';
+const VIEW_TITLES = { sheet: '工程確認表', gantt: 'ガントチャート', minutes: '議事録' };
 
 function showView(name) {
   currentView = name;
   document.body.dataset.view = name;
-  ['gantt', 'tasklist', 'minutes'].forEach(v => {
+  ['sheet', 'gantt', 'minutes'].forEach(v => {
     document.getElementById('tab-' + v).classList.toggle('active', v === name);
     document.getElementById('view-' + v).classList.toggle('active', v === name);
   });
   document.getElementById('view-title').textContent = VIEW_TITLES[name];
-  if (name === 'gantt') { setTimeout(() => showGantt(), 50); renderDock(); } // 議事録の画面で作った・直した内容と保存先の日付を下の議事録欄にも反映
+  if (name === 'gantt') setTimeout(() => showGantt(), 50);
+  if (name === 'sheet') renderSheet(); // 議事録の画面で作った・直した内容と保存先の日付を表のメモにも反映
   if (name === 'minutes') showMinutes();
   renderNavProjects();
 }
 
+document.getElementById('tab-sheet').addEventListener('click',    () => showView('sheet'));
 document.getElementById('tab-gantt').addEventListener('click',    () => showView('gantt'));
-document.getElementById('tab-tasklist').addEventListener('click', () => showView('tasklist'));
 document.getElementById('tab-minutes').addEventListener('click',  () => showView('minutes'));
 
 // ─── 左メニューの工事番号 ─────────────────────────────
-// 押すとガントのその工番まで移動する。遅れがあれば赤い点、注意だけなら黄色の点
+// 押すと工程確認表（それ以外の画面ではガント）のその工番まで移動する。遅れがあれば赤い点、注意だけなら黄色の点
 function renderNavProjects() {
   const box = document.getElementById('nav-projects');
   box.innerHTML = '';
@@ -30,15 +31,18 @@ function renderNavProjects() {
     if (seen.has(pn)) return;
     seen.add(pn);
     const b = document.createElement('button');
-    b.className = 'np-item' + (pn === selectedPn && currentView === 'gantt' ? ' active' : '');
+    b.className = 'np-item' + (pn === selectedPn && currentView !== 'minutes' ? ' active' : '');
     b.title = `${pn} ${p.customer_name || ''}`;
     const dot = taskStats.latePns.has(pn) ? 'late' : taskStats.soonPns.has(pn) ? 'soon' : '';
     b.innerHTML = `<span class="np-pn">${escapeHtml(pn)}${dot ? `<span class="np-dot ${dot}"></span>` : ''}</span>`
       + `<span class="np-customer">${escapeHtml(p.customer_name || '')}</span>`;
     b.addEventListener('click', () => {
       selectedPn = pn;
-      if (currentView !== 'gantt') showView('gantt');
-      setTimeout(() => scrollGanttToProject(pn), 120);
+      if (currentView === 'sheet') scrollSheetToProject(pn);
+      else {
+        if (currentView !== 'gantt') showView('gantt');
+        setTimeout(() => scrollGanttToProject(pn), 120);
+      }
       renderNavProjects();
     });
     box.appendChild(b);
@@ -197,15 +201,14 @@ async function refreshDisplay() {
   computeStats();
   renderLamps();
   renderNavProjects();
-  renderTaskList();
   renderTaskPanel();
   if (currentView === 'gantt') showGantt(); // 他の画面のときは、ガントを開いたときに描き直される
-  renderDock();
+  renderDock(); // 工程確認表の画面なら、表もここで描き直す
 
   hideLoading();
 }
 
-// ログイン中の人が編集できるか。閲覧のみの人には管理者メニュー（工番管理）を出さず、タスクリスト・議事録は表示だけにする
+// ログイン中の人が編集できるか。閲覧のみの人には管理者メニュー（工番管理）を出さず、工程確認表・議事録は表示だけにする
 async function setupEditPermission() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;
@@ -229,7 +232,6 @@ async function init() {
   applyNavCompact();
   await setupEditPermission();
   await loadMinutesList();
-  setDockOpen(!!meetingByDate(todayStr())); // 今日の議事録があれば議事録欄を開いた状態で始める
   await refreshDisplay();
 }
 
