@@ -728,12 +728,12 @@ tbody .sh-name::before { content: ''; position: absolute; left: 5px; top: 8px; b
 .sh-table td.sh-no { padding: 4px 6px 0 0; line-height: 1.35; }
 .sh-table thead th.sh-no { padding: 0 6px 0 0; }
 .sh-memo-input {
-  display: block; width: 100%; min-height: 52px; height: 52px; resize: none; overflow-y: auto;
+  display: block; width: 100%; min-height: 50px; resize: none; overflow: hidden;
   padding: 3px 6px; font-family: inherit; font-size: 12px; line-height: 1.55; color: #2a2f35;
   border: 1px solid transparent; border-radius: 5px; background: transparent; outline: none;
 }
 .sh-memo-input:hover { border-color: #d5d9de; }
 .sh-memo-input:focus { border-color: #2a2f35; background: #fff; position: relative; z-index: 1; }
 .sh-memo-input.dirty { border-color: #e8a317; background: #fffcf3; }
-.sh-memo-view { padding: 3px 6px; font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 150px; overflow-y: auto; }
+.sh-memo-view { padding: 3px 6px; font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; }
 #sheet-tools .save-status { margin-left: auto; min-width: 0; }

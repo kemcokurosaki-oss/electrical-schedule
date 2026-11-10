@@ -57,6 +57,7 @@ async function renderSheet() {
   const scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
   wrap.innerHTML = '';
   wrap.appendChild(buildSheetTable());
+  wrap.querySelectorAll('.sh-memo-input').forEach(fitMemoHeight);
   fixSheetSticky(wrap);
   wrap.scrollLeft = scroll.left; wrap.scrollTop = scroll.top;
 }
@@ -115,6 +116,8 @@ function buildSheetTable() {
       if (sheetMemo) {
         const b = document.createElement('th');
         b.className = 'sh-sub sh-memo-h';
+        const w = memoColWidth(c);
+        b.style.width = b.style.minWidth = b.style.maxWidth = w + 'px';
         b.textContent = 'メモ';
         r3.appendChild(b);
       }
@@ -221,9 +224,32 @@ function afterSheetStatusSaved(col) {
 }
 
 // メモのマス（文字だけ。入力欄から離れたら今の内容として保存する。議事録には「議事録を作成」を押したときに入る）
+// メモの列の幅（px）: その機械のメモで一番長い行の見た目の長さに合わせる（最小 SHEET_MEMO_MIN、最大 SHEET_MEMO_MAX。長い行は折り返す）
+const SHEET_MEMO_MIN = 120, SHEET_MEMO_MAX = 420;
+function textWidth(line) {
+  let w = 0;
+  for (const ch of line) w += ch.charCodeAt(0) > 0xff ? 12 : 7; // 12px の文字で全角 12・半角 7 くらい
+  return w;
+}
+function memoColWidth(col) {
+  let max = 0;
+  [...PROCESSES.map(p => p.no), SHEET_OTHER_NO].forEach(no => {
+    String(itemMemos[noteKey(col.project_number, col.machine, no)] || '').split('\n').forEach(l => { max = Math.max(max, textWidth(l)); });
+  });
+  return Math.max(SHEET_MEMO_MIN, Math.min(SHEET_MEMO_MAX, max + 24));
+}
+
+// 入力欄の高さを中身に合わせる（行の高さも一緒に伸びる）
+function fitMemoHeight(ta) {
+  ta.style.height = 'auto';
+  ta.style.height = (ta.scrollHeight + 2) + 'px';
+}
+
 function sheetMemoCell(col, no) {
   const td = document.createElement('td');
   td.className = 'sh-memo';
+  const w = memoColWidth(col);
+  td.style.width = td.style.minWidth = td.style.maxWidth = w + 'px';
   const key = noteKey(col.project_number, col.machine, no);
   const body = itemMemos[key] || '';
   if (!canEdit) {
@@ -237,11 +263,8 @@ function sheetMemoCell(col, no) {
   ta.className = 'sh-memo-input';
   ta.value = body;
   ta.rows = 1;
-  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 240) + 'px'; };
-  ta.addEventListener('input', () => { grow(); ta.classList.toggle('dirty', ta.value !== (itemMemos[key] || '')); });
-  ta.addEventListener('focus', grow);
+  ta.addEventListener('input', () => { fitMemoHeight(ta); ta.classList.toggle('dirty', ta.value !== (itemMemos[key] || '')); });
   ta.addEventListener('blur', () => {
-    ta.style.height = '';
     if (ta.value === (itemMemos[key] || '')) return;
     const p = saveItemMemo(col, no, ta.value).then(ok => { if (ok) ta.classList.remove('dirty'); });
     pendingMemoSaves.add(p);
