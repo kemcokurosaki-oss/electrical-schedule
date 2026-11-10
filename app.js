@@ -1,6 +1,6 @@
 // ─── 画面切替（左メニュー） ──────────────────────────────
 let currentView = 'sheet';
-const VIEW_TITLES = { sheet: '工程確認表', gantt: 'ガントチャート', minutes: '議事録' };
+const VIEW_TITLES = { sheet: '進捗確認表', gantt: 'ガントチャート', minutes: '議事録' };
 
 function showView(name) {
   currentView = name;
@@ -21,7 +21,7 @@ document.getElementById('tab-gantt').addEventListener('click',    () => showView
 document.getElementById('tab-minutes').addEventListener('click',  () => showView('minutes'));
 
 // ─── 左メニューの工事番号 ─────────────────────────────
-// 押すと工程確認表（それ以外の画面ではガント）のその工番まで移動する。遅れがあれば赤い点、注意だけなら黄色の点
+// 押すと進捗確認表（それ以外の画面ではガント）のその工番まで移動する
 function renderNavProjects() {
   const box = document.getElementById('nav-projects');
   box.innerHTML = '';
@@ -33,9 +33,7 @@ function renderNavProjects() {
     const b = document.createElement('button');
     b.className = 'np-item' + (pn === selectedPn && currentView !== 'minutes' ? ' active' : '');
     b.title = `${pn} ${p.customer_name || ''}`;
-    const dot = taskStats.latePns.has(pn) ? 'late' : taskStats.soonPns.has(pn) ? 'soon' : '';
-    b.innerHTML = `<span class="np-pn">${escapeHtml(pn)}${dot ? `<span class="np-dot ${dot}"></span>` : ''}</span>`
-      + `<span class="np-customer">${escapeHtml(p.customer_name || '')}</span>`;
+    b.innerHTML = `<span class="np-pn">${escapeHtml(pn)}</span>`; // 遅れの点・客先名は出さない（客先名はマウスを乗せると出る）
     b.addEventListener('click', () => {
       selectedPn = pn;
       if (currentView === 'sheet') scrollSheetToProject(pn);
@@ -139,18 +137,21 @@ async function loadData() {
                  link_machine: c.link_machine || c.machine, unit: String(c.unit || '').trim(), sort_order: c.sort_order }))
     .sort((a, b) => a.project_number.localeCompare(b.project_number) || a.sort_order - b.sort_order);
 
-  ganttTasks = {}; ganttOther = {}; statusMap = {};
+  ganttTasks = {}; ganttOther = {}; statusMap = {}; itemMemos = {};
   if (currentProjects.length === 0) return;
 
   const projectNumbers = [...new Set(currentProjects.map(p => p.project_number))];
 
   // 電気関係かどうかは大項目・見出し・タスク名で判断するので、工番のタスクは全部読んでから選ぶ
-  const [tasks, statusRows] = await Promise.all([
+  const [tasks, statusRows, memoRows] = await Promise.all([
     fetchTasks(projectNumbers),
     fetchAll(() => sb.from('denki_process_status')
       .select('project_number, machine, process_no, status, start_date, end_date, tantousha, memo')
       .in('project_number', projectNumbers).order('project_number').order('machine').order('process_no')),
+    fetchAll(() => sb.from('denki_item_memos').select('project_number, machine, process_no, body')
+      .in('project_number', projectNumbers).order('project_number')),
   ]);
+  memoRows.forEach(r => { itemMemos[noteKey(r.project_number, r.machine, r.process_no)] = r.body; });
 
   const custMap = {};
   tasks.forEach(t => {
@@ -203,12 +204,12 @@ async function refreshDisplay() {
   renderNavProjects();
   renderTaskPanel();
   if (currentView === 'gantt') showGantt(); // 他の画面のときは、ガントを開いたときに描き直される
-  renderDock(); // 工程確認表の画面なら、表もここで描き直す
+  if (currentView === 'sheet') renderSheet();
 
   hideLoading();
 }
 
-// ログイン中の人が編集できるか。閲覧のみの人には管理者メニュー（工番管理）を出さず、工程確認表・議事録は表示だけにする
+// ログイン中の人が編集できるか。閲覧のみの人には管理者メニュー（工番管理）を出さず、進捗確認表・議事録は表示だけにする
 async function setupEditPermission() {
   const { data: { session } } = await sb.auth.getSession();
   const user = session?.user;

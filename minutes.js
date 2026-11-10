@@ -100,13 +100,13 @@ function createNewDateControls(side) {
   closed.className = 'new-date-closed';
   const open = document.createElement('button');
   open.className = side ? 'btn btn-dark new-open' : 'btn';
-  open.textContent = '＋ 新しい議事録';
-  open.title = '表示中の議事録の内容をコピーして、選んだ日付の新しい議事録を作ります';
+  open.textContent = '議事録を作成';
+  open.title = '進捗確認表のメモから、選んだ日付の議事録を作ります（前回との違いを赤・青で表示）';
   closed.appendChild(open);
   if (side) {
     const hint = document.createElement('span');
     hint.className = 'new-hint';
-    hint.textContent = '表示中の内容（色・取り消し線も）を引き継いで作成します';
+    hint.textContent = '進捗確認表のメモから作ります。前回からの書き換えは赤、追記は青で表示します';
     closed.appendChild(hint);
   }
   const form = document.createElement('span');
@@ -126,8 +126,8 @@ function createNewDateControls(side) {
   const show = on => {
     closed.hidden = on; form.hidden = !on;
     if (on) {
-      const src = shownMeeting();
-      from.textContent = src && src.id ? `${fmtMeetingDate(src.meeting_date)} の内容を引き継ぎます` : '';
+      const prev = minutesList[0];
+      from.textContent = prev ? `${fmtMeetingDate(prev.meeting_date)} の議事録と比べます` : '最初の議事録（色は付けません）';
       di.value = todayStr(); di.focus();
     }
   };
@@ -135,7 +135,7 @@ function createNewDateControls(side) {
   cancel.addEventListener('click', () => show(false));
   ok.addEventListener('click', async () => {
     ok.disabled = true;
-    const m = await copyMeetingTo(shownMeeting(), di.value);
+    const m = await createMinutesFromSheet(di.value);
     ok.disabled = false;
     if (m) show(false);
   });
@@ -201,34 +201,27 @@ async function ensureFirstMeeting() {
 async function confirmPastEdit(meeting, ed) {
   if (!meeting.id || meeting.meeting_date >= todayStr() || pastEditOk.has(meeting.id)) return;
   ed.blur();
-  if (confirm(`${fmtMeetingDate(meeting.meeting_date)} の議事録を直接直しますか？\n\n［OK］このまま ${fmtMeetingDate(meeting.meeting_date)} の議事録を直す\n［キャンセル］今日の議事録を作って、そちらに書く`)) {
+  if (confirm(`${fmtMeetingDate(meeting.meeting_date)} の議事録を直しますか？\n（直した内容はこの議事録だけに入ります。進捗確認表のメモは変わりません）`)) {
     pastEditOk.add(meeting.id);
     ed.focus();
-    return;
   }
-  const today = meetingByDate(todayStr());
-  if (today) {
-    alert(`今日（${fmtMeetingDate(todayStr())}）の議事録はすでにあるので、そちらを開きます。`);
-    dockPinId = today.id;
-    minutesSelectedDate = today.meeting_date;
-    renderDock();
-    if (currentView === 'minutes') selectMinutes(today.meeting_date);
-    return;
-  }
-  await copyMeetingTo(meeting, todayStr());
 }
 
 async function loadMeetingData(meeting) {
-  if (!meeting.id) return { decisions: null, notes: {} }; // まだ1件も無いときの空の議事録
+  if (!meeting.id) return { decisions: null, notes: {}, raw: {} }; // まだ1件も無いときの空の議事録
   if (minutesCache[meeting.id]) return minutesCache[meeting.id];
   const [mRes, nRes] = await Promise.all([
     sb.from('denki_meetings').select('decisions').eq('id', meeting.id).single(),
-    sb.from('denki_meeting_notes').select('project_number, machine, process_no, body').eq('meeting_id', meeting.id),
+    sb.from('denki_meeting_notes').select('project_number, machine, process_no, body, raw').eq('meeting_id', meeting.id),
   ]);
   if (mRes.error || nRes.error) throw (mRes.error || nRes.error);
-  const notes = {};
-  nRes.data.forEach(n => { notes[noteKey(n.project_number, n.machine, n.process_no)] = n.body; });
-  return (minutesCache[meeting.id] = { decisions: mRes.data.decisions, notes });
+  const notes = {}, raw = {}; // raw は作成したときのメモの文章（次の議事録で差分を出す。無い欄は本文から文字だけ取る）
+  nRes.data.forEach(n => {
+    const k = noteKey(n.project_number, n.machine, n.process_no);
+    notes[k] = n.body;
+    raw[k] = n.raw ?? stripRich(n.body);
+  });
+  return (minutesCache[meeting.id] = { decisions: mRes.data.decisions, notes, raw });
 }
 
 function getBody(data, key) {
@@ -438,11 +431,8 @@ async function selectMinutes(dateStr) {
     if (canEdit) {
       const b = document.createElement('button');
       b.className = 'btn btn-dark minutes-create-btn';
-      b.textContent = 'この日の議事録を作成（前回の内容を引き継ぎます）';
-      b.addEventListener('click', async () => {
-        await flushEditors();
-        if (await createMinutes(dateStr)) { selectMinutes(dateStr); renderDock(); }
-      });
+      b.textContent = 'この日の議事録を作成（進捗確認表のメモから）';
+      b.addEventListener('click', () => createMinutesFromSheet(dateStr));
       main.appendChild(b);
     }
     return;
@@ -639,7 +629,7 @@ function renderMinutesMain(meeting, data) {
   main.appendChild(c);
 }
 
-// 議事録の画面の、機械1台分の欄: 機械名の見出し → 項目ごとのメモ（工程確認表のメモと同じもの）→ その他
+// 議事録の画面の、機械1台分の欄: 機械名の見出し → 項目ごとのメモ（進捗確認表のメモと同じもの）→ その他
 let minutesShowAll = false; // メモの無い項目も表示する
 function machineSection(meeting, data, pn, slot) {
   const sec = document.createElement('div');
@@ -695,7 +685,6 @@ function setDockKey(pn, machine) {
 }
 
 async function renderDock() {
-  if (currentView === 'sheet') renderSheet(); // 議事録の回が変わったら、工程確認表のメモもその回にそろえる
   const ds = document.getElementById('dock-save');
   if (!ds.firstChild) {
     if (canEdit) ds.appendChild(createSaveControls());
@@ -972,3 +961,109 @@ document.getElementById('minutes-date').addEventListener('change', e => {
 window.addEventListener('beforeunload', e => {
   if (document.querySelector('.rt-editor.dirty')) { e.preventDefault(); e.returnValue = ''; }
 });
+
+// ─── 議事録を作成（進捗確認表のメモから） ─────────────────
+// 会議の日に表のメモを入れ終わったら「議事録を作成」を押す。
+// そのときのメモ（項目ごと・その他）を議事録の欄にし、前回の議事録と比べて
+//   書き換えた行 → 赤（訂正）、増えた行 → 青（追記）、消した行 → 赤の取り消し線
+// で表示する。前回の議事録が無いとき（最初の1回）は色を付けない。全体の決定事項は前回の内容を引き継ぐ。
+// 表の予定日・状態の変更は議事録には書かない。
+const DIFF_RED = '#c03030', DIFF_BLUE = '#1f5fa8';
+
+function memoLines(text) {
+  return String(text || '').replace(/\r/g, '').split('\n').map(l => l.replace(/\s+$/, '')).filter((l, i, a) => l || (i > 0 && i < a.length - 1));
+}
+
+// 行の差分（LCS）。[{ type: 'same'|'add'|'del', line }]
+function diffLines(prev, cur) {
+  const n = prev.length, m = cur.length;
+  const dp = Array.from({ length: n + 1 }, () => new Array(m + 1).fill(0));
+  for (let i = n - 1; i >= 0; i--) for (let j = m - 1; j >= 0; j--)
+    dp[i][j] = prev[i] === cur[j] ? dp[i + 1][j + 1] + 1 : Math.max(dp[i + 1][j], dp[i][j + 1]);
+  const out = [];
+  let i = 0, j = 0;
+  while (i < n || j < m) {
+    if (i < n && j < m && prev[i] === cur[j]) { out.push({ type: 'same', line: cur[j] }); i++; j++; }
+    else if (j < m && (i >= n || dp[i][j + 1] >= dp[i + 1][j])) { out.push({ type: 'add', line: cur[j] }); j++; }
+    else { out.push({ type: 'del', line: prev[i] }); i++; }
+  }
+  return out;
+}
+
+// 議事録の欄の本文（書式付き）。hasPrev=false は色なし
+function diffHtml(prevText, curText, hasPrev) {
+  const div = (line, style) => `<div${style ? ` style="${style}"` : ''}>${escapeHtml(line) || '<br>'}</div>`;
+  const cur = memoLines(curText);
+  if (!hasPrev) return cur.map(l => div(l)).join('');
+  const ops = diffLines(memoLines(prevText), cur);
+  const html = [];
+  for (let k = 0; k < ops.length;) {
+    if (ops[k].type === 'same') { html.push(div(ops[k].line)); k++; continue; }
+    const dels = [], adds = []; // 続いている「消した行」「増えた行」をひとまとまりにする
+    while (k < ops.length && ops[k].type !== 'same') { (ops[k].type === 'del' ? dels : adds).push(ops[k].line); k++; }
+    // 消した行の数までは書き換え（赤）、それより多い行は追記（青）、増えた行が無ければ削除（赤の取り消し線）
+    adds.forEach((l, n) => html.push(div(l, `color: ${n < dels.length ? DIFF_RED : DIFF_BLUE};`)));
+    if (!adds.length) dels.forEach(l => html.push(div(l, `color: ${DIFF_RED}; text-decoration: line-through;`)));
+  }
+  return html.join('');
+}
+
+function stripRich(html) {
+  const d = document.createElement('div');
+  d.innerHTML = richFromStored(html);
+  return [...d.childNodes].map(n => n.textContent).join('\n');
+}
+
+async function createMinutesFromSheet(dateStr) {
+  if (!canEdit || !dateStr) return null;
+  if (typeof flushSheetMemos === 'function') await flushSheetMemos();
+  await flushEditors();
+  const ex = meetingByDate(dateStr);
+  if (ex && !confirm(`${fmtMeetingDate(dateStr)} の議事録はすでにあります。今の表のメモで作り直しますか？\n（${fmtMeetingDate(dateStr)} の議事録で直した内容は消えます）`)) return null;
+
+  // 表のメモは、ほかの人の入力も入るように DB から読み直す
+  let memos;
+  try { memos = await fetchAll(() => sb.from('denki_item_memos').select('project_number, machine, process_no, body').order('project_number')); }
+  catch (e) { minutesError(e); return null; }
+  const prev = minutesList.find(m => m.meeting_date < dateStr) || null;
+  let prevData = null;
+  if (prev) {
+    try { prevData = await loadMeetingData(prev); }
+    catch (e) { minutesError(e); return null; }
+  }
+  if (ex && !(await deleteMeetingRow(ex))) return null;
+
+  const email = await currentEmail();
+  const { data, error } = await sb.from('denki_meetings').insert({
+    meeting_date: dateStr, decisions: prevData ? prevData.decisions : null, updated_at: new Date().toISOString(), updated_by: email,
+  }).select('id').single();
+  if (error) { minutesError(error); return null; }
+
+  const rows = [], seen = new Set();
+  memos.forEach(r => {
+    const key = noteKey(r.project_number, r.machine, r.process_no);
+    seen.add(key);
+    const before = prevData ? (prevData.raw[key] ?? '') : '';
+    rows.push({ meeting_id: data.id, project_number: r.project_number, machine: r.machine, process_no: r.process_no,
+      raw: r.body, body: diffHtml(before, r.body, !!prevData), updated_by: email });
+  });
+  // 前回あって今回消したメモは、取り消し線で残す
+  if (prevData) Object.entries(prevData.raw).forEach(([key, before]) => {
+    if (seen.has(key) || !before) return;
+    const [pn, machine, no] = splitKey(key);
+    rows.push({ meeting_id: data.id, project_number: pn, machine, process_no: no, raw: '', body: diffHtml(before, '', true), updated_by: email });
+  });
+  for (let i = 0; i < rows.length; i += 500) {
+    const r = await sb.from('denki_meeting_notes').insert(rows.slice(i, i + 500));
+    if (r.error) { minutesError(r.error); break; }
+  }
+  await loadMinutesList();
+  const m = meetingByDate(dateStr);
+  if (m) {
+    minutesLoaded = true;
+    minutesSelectedDate = dateStr;
+    dockPinId = m.id;
+    showView('minutes');
+  }
+  return m;
+}

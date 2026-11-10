@@ -1,9 +1,10 @@
-// ─── 工程確認表（メイン画面） ─────────────────────────────
+// ─── 進捗確認表（メイン画面） ─────────────────────────────
 // Excel「電気工程確認会議」と同じ形の表。行が項目（config.js の PROCESSES）、列が工番の機械。
 // 機械ごとに「予定日・状態」と「メモ」の2列。
 //   予定日・状態 … 今の状態だけを持つ（denki_process_status。予定日は start_date・end_date に同じ日付を入れる）
-//   メモ       … 議事録の欄（denki_meeting_notes の 工番＋機械＋項目。項目 0 は機械ごとの「その他」）。
-//                上の「議事録の日付」で選んだ回に保存し、新しい回は前回のメモを全部引き継ぐ（＝その日の議事録になる）
+//   メモ       … 今の内容（denki_item_memos の 工番＋機械＋項目。項目 0 は機械ごとの「その他」）。文字だけ。
+//                上の「議事録を作成」を押すと、そのときのメモから議事録を作る（前回との違いを赤・青で表示。minutes.js）
+let itemMemos = {};     // noteKey → メモの文章（app.js の loadData で読む）
 let sheetPns = null;    // 表示する工番（null はすべて）
 let sheetMemo = true;   // メモの列を表示するか
 try {
@@ -52,20 +53,27 @@ async function renderSheet() {
     wrap.innerHTML = '<div class="no-data">表示する列がありません。左メニューの「工番管理」から工番と機械を追加してください。</div>';
     return;
   }
-  const meeting = dockMeeting();
-  let data = { decisions: null, notes: {} };
-  if (meeting && meeting.id) {
-    try { data = await loadMeetingData(meeting); }
-    catch (e) { wrap.textContent = 'メモ（議事録）を読み込めませんでした: ' + (e.message || e); return; }
-  }
-  if (seq !== sheetRenderSeq) return; // 読み込み中に描き直しが入った
+  if (seq !== sheetRenderSeq) return;
   const scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
   wrap.innerHTML = '';
-  wrap.appendChild(buildSheetTable(meeting || { id: null, meeting_date: null }, data));
+  wrap.appendChild(buildSheetTable());
+  fixSheetSticky(wrap);
   wrap.scrollLeft = scroll.left; wrap.scrollTop = scroll.top;
 }
 
-function buildSheetTable(meeting, data) {
+// 左に固定する No.・項目・流れの位置は、実際の列の幅から決める（幅がずれて No. が隠れないように）
+function fixSheetSticky(wrap) {
+  const head = wrap.querySelector('thead tr');
+  if (!head) return;
+  let left = 0;
+  ['sh-no', 'sh-name', 'sh-flow'].forEach(cls => {
+    const th = head.querySelector('.' + cls);
+    wrap.querySelectorAll('.' + cls).forEach(el => { el.style.left = left + 'px'; });
+    left += th.getBoundingClientRect().width;
+  });
+}
+
+function buildSheetTable() {
   const groups = sheetGroups();
   const span = sheetMemo ? 2 : 1;
   const table = document.createElement('table');
@@ -129,7 +137,7 @@ function buildSheetTable(meeting, data) {
   PROCESSES.forEach(proc => {
     row(proc.no, proc.name, PROCESS_FLOW[proc.no] || '', 'dept-' + (PROCESS_DEPT[proc.no] || 'other'), (tr, col, gap) => {
       tr.appendChild(sheetStatusCell(col, proc, gap));
-      if (sheetMemo) tr.appendChild(sheetMemoCell(meeting, data, col, proc.no));
+      if (sheetMemo) tr.appendChild(sheetMemoCell(col, proc.no));
     });
   });
   // 機械ごとの「その他」（項目に当てはまらない話）
@@ -138,7 +146,7 @@ function buildSheetTable(meeting, data) {
     td.className = 'sh-ds sh-other-label' + gap;
     td.textContent = sheetMemo ? '項目以外のこと' : '';
     tr.appendChild(td);
-    if (sheetMemo) tr.appendChild(sheetMemoCell(meeting, data, col, SHEET_OTHER_NO));
+    if (sheetMemo) tr.appendChild(sheetMemoCell(col, SHEET_OTHER_NO));
   });
   // 出荷日（全体工程表の「工場出荷」。表示だけ）
   row('', '工場出荷', '', 'sh-ship', (tr, col, gap) => {
@@ -212,14 +220,78 @@ function afterSheetStatusSaved(col) {
   renderTaskPanel();
 }
 
-// メモのマス（議事録の欄そのもの）
-function sheetMemoCell(meeting, data, col, no) {
+// メモのマス（文字だけ。入力欄から離れたら今の内容として保存する。議事録には「議事録を作成」を押したときに入る）
+function sheetMemoCell(col, no) {
   const td = document.createElement('td');
   td.className = 'sh-memo';
   const key = noteKey(col.project_number, col.machine, no);
-  if (!canEdit && !data.notes[key]) return td; // 閲覧のみの人には空欄（「記入なし」は出さない）
-  td.appendChild(createEditor(meeting, key, data.notes[key]));
+  const body = itemMemos[key] || '';
+  if (!canEdit) {
+    const v = document.createElement('div');
+    v.className = 'sh-memo-view';
+    v.textContent = body;
+    td.appendChild(v);
+    return td;
+  }
+  const ta = document.createElement('textarea');
+  ta.className = 'sh-memo-input';
+  ta.value = body;
+  ta.rows = 1;
+  const grow = () => { ta.style.height = 'auto'; ta.style.height = Math.min(ta.scrollHeight + 2, 240) + 'px'; };
+  ta.addEventListener('input', () => { grow(); ta.classList.toggle('dirty', ta.value !== (itemMemos[key] || '')); });
+  ta.addEventListener('focus', grow);
+  ta.addEventListener('blur', () => {
+    ta.style.height = '';
+    if (ta.value === (itemMemos[key] || '')) return;
+    const p = saveItemMemo(col, no, ta.value).then(ok => { if (ok) ta.classList.remove('dirty'); });
+    pendingMemoSaves.add(p);
+    p.finally(() => pendingMemoSaves.delete(p));
+  });
+  td.appendChild(ta);
   return td;
+}
+
+// 入力中のメモを保存し終わるまで待つ（議事録を作る前・表を描き直す前）
+const pendingMemoSaves = new Set();
+async function flushSheetMemos() {
+  if (document.activeElement && document.activeElement.classList.contains('sh-memo-input')) document.activeElement.blur();
+  await Promise.all([...pendingMemoSaves]);
+}
+
+async function saveItemMemo(col, no, text) {
+  const body = String(text || '').replace(/\s+$/, '');
+  const key = noteKey(col.project_number, col.machine, no);
+  setSheetSaveState('saving');
+  try {
+    let res;
+    if (body) {
+      res = await sb.from('denki_item_memos').upsert(
+        { project_number: col.project_number, machine: col.machine, process_no: no, body, updated_at: new Date().toISOString(), updated_by: await currentEmail() },
+        { onConflict: 'project_number,machine,process_no' }).select('process_no');
+    } else {
+      res = await sb.from('denki_item_memos').delete()
+        .eq('project_number', col.project_number).eq('machine', col.machine).eq('process_no', no).select('process_no');
+    }
+    if (res.error) throw res.error;
+    if (body && !res.data.length) throw new Error('権限がないか、ログインが切れています');
+    if (body) itemMemos[key] = body; else delete itemMemos[key];
+    setSheetSaveState('saved');
+    return true;
+  } catch (e) {
+    setSheetSaveState('error');
+    alert(`メモを保存できませんでした。入力した内容は画面に残っています。\n${e.message || e}\n\nログインが切れている場合は、入力内容を控えてからページを再読み込みしてください。`);
+    return false;
+  }
+}
+
+let sheetSavedAt = null;
+function setSheetSaveState(state) {
+  if (state === 'saved') sheetSavedAt = new Date();
+  const el = document.getElementById('sheet-save-status');
+  if (!el) return;
+  const hm = sheetSavedAt ? `${sheetSavedAt.getHours()}:${String(sheetSavedAt.getMinutes()).padStart(2, '0')}` : '';
+  el.textContent = { saving: '… 保存中', saved: `✓ メモを保存しました ${hm}`, error: '× 保存できませんでした' }[state] || '';
+  el.dataset.state = state;
 }
 
 // 予定日・状態を保存する（電気工程表だけに保存。全体工程表には書かない）
@@ -256,21 +328,16 @@ async function saveProcessRec(col, proc, patch) {
 }
 
 // ─── 上の操作の行 ─────────────────────────────────────
-// 左: 議事録の日付（メモの保存先）・過去の札・＋新しい議事録・保存　右: 書式のボタン
-// 2行目: 工番の絞り込み・メモの表示切り替え
+// 1行目: 議事録を作成（会議の日付）・前回の議事録・メモの保存の状態　2行目: 工番の絞り込み・メモの表示切り替え
 function renderSheetTools() {
   const box = document.getElementById('sheet-tools');
-  const meeting = dockMeeting();
   if (!box.dataset.built) {
     box.dataset.built = '1';
     box.innerHTML = `
       <div class="sheet-row">
-        <span class="f-title">メモの保存先</span>
-        <select id="sheet-date" class="dock-date" title="メモを保存する議事録の日付（過去の回も選べます）"></select>
-        <span class="past-tag" id="sheet-past" hidden>過去の議事録</span>
+        <span id="sheet-make"></span>
         <span class="dock-meta" id="sheet-meta"></span>
-        <span id="sheet-save"></span>
-        <span id="sheet-rt"></span>
+        <span class="save-status" id="sheet-save-status"></span>
       </div>
       <div class="sheet-row">
         <span class="f-title">工番</span>
@@ -278,43 +345,17 @@ function renderSheetTools() {
         <span class="sep"></span>
         <button class="chip" id="sheet-memo-toggle"></button>
       </div>`;
-    if (canEdit) {
-      document.getElementById('sheet-save').appendChild(createSaveControls());
-      document.getElementById('sheet-rt').appendChild(createRichToolbar());
-    }
-    document.getElementById('sheet-date').addEventListener('change', async e => {
-      await flushEditors();
-      dockPinId = minutesList.find(m => String(m.id) === e.target.value)?.id || null;
-      renderSheet();
-    });
+    if (canEdit) document.getElementById('sheet-make').appendChild(createNewDateControls(false));
     document.getElementById('sheet-memo-toggle').addEventListener('click', async () => {
-      await flushEditors();
+      await flushSheetMemos();
       sheetMemo = !sheetMemo;
       localStorage.setItem('denki_sheet_memo', sheetMemo ? '1' : '0');
       renderSheet();
     });
   }
-  // 議事録の日付
-  const sel = document.getElementById('sheet-date');
-  sel.innerHTML = '';
-  if (!meeting || !meeting.id) {
-    const o = document.createElement('option');
-    o.textContent = canEdit ? '（書き込むと今日の議事録を作ります）' : '（まだありません）';
-    sel.appendChild(o);
-    sel.disabled = true;
-  } else {
-    sel.disabled = false;
-    minutesList.forEach(m => {
-      const o = document.createElement('option');
-      o.value = m.id;
-      o.textContent = fmtMeetingDate(m.meeting_date) + (m.meeting_date === todayStr() ? '　今日' : '');
-      o.selected = m.id === meeting.id;
-      sel.appendChild(o);
-    });
-  }
-  document.getElementById('sheet-past').hidden = !(meeting && meeting.id && meeting.meeting_date < todayStr());
-  document.getElementById('sheet-meta').textContent = meeting && meeting.id ? dockMetaText(meeting) : '';
-  renderSaveState();
+  const last = minutesList[0];
+  document.getElementById('sheet-meta').textContent = last
+    ? `前回の議事録 ${fmtMeetingDate(last.meeting_date)}` : '議事録はまだありません';
 
   // 工番の絞り込み
   const pnBox = document.getElementById('sheet-pns');
@@ -324,7 +365,7 @@ function renderSheetTools() {
     b.className = 'chip' + (on ? ' on' : '');
     b.textContent = label;
     b.title = title;
-    b.addEventListener('click', async () => { await flushEditors(); onClick(); saveSheetPns(); renderSheet(); });
+    b.addEventListener('click', async () => { await flushSheetMemos(); onClick(); saveSheetPns(); renderSheet(); });
     pnBox.appendChild(b);
   };
   chip('すべて', !sheetPns, 'すべての工番を表示', () => { sheetPns = null; });

@@ -69,7 +69,7 @@ a { color: #2a2f35; }
   border: none; border-radius: 6px; background: transparent; cursor: pointer; text-align: left;
 }
 .np-item:hover, .np-item.active { background: #353b43; }
-.np-pn { font-size: 13px; font-weight: 700; color: #e3e6ea; display: flex; align-items: center; gap: 5px; }
+.np-pn { font-size: 16px; font-weight: 700; color: #e3e6ea; display: flex; align-items: center; gap: 5px; }
 .np-customer { font-size: 11.5px; color: #8a929b; }
 .np-dot { width: 7px; height: 7px; border-radius: 50%; }
 .np-dot.late { background: #d64545; }
@@ -109,7 +109,7 @@ body.nav-compact .nav-admin { padding-top: 8px; }
 body.nav-compact .nav-admin-btn { padding: 8px 0; font-size: 11px; }
 body.nav-compact #nav-projects { border-top: 1px solid #3a4048; margin-top: 8px; padding-top: 8px; }
 body.nav-compact .np-item { align-items: center; padding: 7px 0; }
-body.nav-compact .np-pn { font-size: 12px; }
+body.nav-compact .np-pn { font-size: 13px; }
 body.nav-compact #side-nav #m365_user_chip { justify-content: center; padding: 4px 0; }
 
 /* ─── メイン ─────────────────────────────────────────── */
@@ -656,7 +656,7 @@ body[data-view="minutes"] .lamp { display: none; }
 /* ─── ガントの画面はガントチャートだけ（右のタスクリスト・下の議事録欄は出さない） ─── */
 #view-gantt.simple #tl-tab, #view-gantt.simple #tl-panel, #view-gantt.simple #min-dock { display: none !important; }
 
-/* ─── 工程確認表（メイン画面） ─────────────────────────── */
+/* ─── 進捗確認表（メイン画面） ─────────────────────────── */
 #view-sheet.active { display: flex; flex-direction: column; padding: 10px 16px 14px; gap: 8px; }
 #sheet-tools { display: flex; flex-direction: column; gap: 6px; flex-shrink: 0; }
 .sheet-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; font-size: 12px; }
@@ -723,3 +723,17 @@ tbody .sh-name::before { content: ''; position: absolute; left: 5px; top: 8px; b
 .mn-item-other .mn-item-title { color: #2a2f35; }
 .mn-item-other .rt-editor { min-height: 60px; }
 .mn-item-empty { font-size: 12.5px; color: #a2abb5; padding: 4px 8px; }
+
+/* 進捗確認表: No. は項目名と同じ高さに。メモは文字だけの入力欄 */
+.sh-table td.sh-no { padding: 4px 6px 0 0; line-height: 1.35; }
+.sh-table thead th.sh-no { padding: 0 6px 0 0; }
+.sh-memo-input {
+  display: block; width: 100%; min-height: 52px; height: 52px; resize: none; overflow-y: auto;
+  padding: 3px 6px; font-family: inherit; font-size: 12px; line-height: 1.55; color: #2a2f35;
+  border: 1px solid transparent; border-radius: 5px; background: transparent; outline: none;
+}
+.sh-memo-input:hover { border-color: #d5d9de; }
+.sh-memo-input:focus { border-color: #2a2f35; background: #fff; position: relative; z-index: 1; }
+.sh-memo-input.dirty { border-color: #e8a317; background: #fffcf3; }
+.sh-memo-view { padding: 3px 6px; font-size: 12px; line-height: 1.55; white-space: pre-wrap; overflow-wrap: anywhere; max-height: 150px; overflow-y: auto; }
+#sheet-tools .save-status { margin-left: auto; min-width: 0; }
