@@ -165,7 +165,6 @@ setInterval(async () => {
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
   if (!document.getElementById('admin-modal').hidden) return;
-  if (document.getElementById('manage-modal').classList.contains('open')) return;
   try { await loadData(); renderAll(); } catch (e) { console.warn('自動の読み直しに失敗', e); }
 }, 60000);
 

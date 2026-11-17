@@ -1,67 +1,48 @@
-// ─── 工番管理モーダル ─────────────────────────────────
+// ─── 工番・機械の登録（管理画面のタブの1つ。枠とタブは admin.js） ───────
 // 電気の作業がある「工番＋機械（＋ユニット）」を選んで列として登録する（denki_columns）
 // 列のキー（machine）は 機械名＋ユニット名（例: FS と BT1 → FSBT1）。全体工程表とは link_machine と unit で照合する
 let manageCandidates = null;   // 工番ごとの { customer, machines: Map<機械, Set<ユニット>> }
+let mgView = null;             // 描画先（admin.js の .am-view）
 let mgPicking = null;          // 「＋ 機械を追加」を開いている工番
+let mgNewOpen = false;         // 「工番を追加」を開いているか
+let mgNewPn = null;            // 「工番を追加」で選んだ工番
+let mgNewQ = '';               // 工番の絞り込み
 let mgNewSel = new Set();      // 「工番を追加」で選んでいる機械・ユニット（キー: 機械\tユニット）
-let mgListOpen = false;        // 工番のプルダウンを開いているか
 
-const mgEl = id => document.getElementById(id);
-const mgPnInput = mgEl('manage-pn-input');
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text != null) e.textContent = text;
+  return e;
+}
 
-mgEl('btn-manage').addEventListener('click', openManageModal);
-mgEl('manage-close').addEventListener('click', closeManageModal);
-mgEl('manage-modal').addEventListener('click', e => {
-  if (e.target === mgEl('manage-modal')) closeManageModal();
-});
-mgEl('manage-new-open').addEventListener('click', openNewForm);
-mgEl('manage-new-cancel').addEventListener('click', closeNewForm);
-mgEl('manage-new-add').addEventListener('click', addNewProject);
-mgEl('manage-new-all').addEventListener('click', () => {
-  const all = newCandidateList().map(mgKey);
-  mgNewSel = mgNewSel.size === all.length ? new Set() : new Set(all);
-  renderNewForm();
-});
-mgPnInput.addEventListener('input', () => { mgNewSel.clear(); showPnList(true); renderNewForm(); });
-mgPnInput.addEventListener('focus', () => showPnList(true));
-mgPnInput.addEventListener('blur', () => setTimeout(() => showPnList(false), 150));
-mgPnInput.addEventListener('keydown', e => {
-  if (e.key === 'Enter') {
-    const opts = pnOptions();
-    if (mgListOpen && opts.length) pickPn(opts[0]);
-    else addNewProject();
-  }
-  if (e.key === 'Escape') showPnList(false);
-});
-mgEl('manage-pn-toggle').addEventListener('mousedown', e => {
-  e.preventDefault();
-  mgPnInput.focus();
-  showPnList(!mgListOpen);
-});
+function amBtn(cls, text, onClick) {
+  const b = el('button', cls, text);
+  b.type = 'button';
+  b.addEventListener('click', onClick);
+  return b;
+}
 
-async function openManageModal() {
-  if (!canEdit) return;
-  mgEl('manage-modal').classList.add('active');
+function mgReset() {
+  mgView = null; mgPicking = null; mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
+}
+
+async function renderManageView(view) {
+  mgReset();
+  mgView = view;
+  view.appendChild(el('div', 'am-muted', '読み込み中…'));
   if (!manageCandidates) {
-    mgEl('manage-list').innerHTML = '<div class="manage-msg">読み込み中...</div>';
     try {
       await loadManageCandidates();
     } catch (e) {
-      mgEl('manage-list').innerHTML = '';
-      const d = document.createElement('div');
-      d.className = 'manage-msg';
-      d.textContent = '工番の一覧を読み込めませんでした: ' + (e.message || e);
-      mgEl('manage-list').appendChild(d);
+      if (mgView !== view) return;
+      view.innerHTML = '';
+      view.appendChild(el('div', 'am-muted', '工番の一覧を読み込めませんでした: ' + (e.message || e)));
       return;
     }
   }
-  renderManageList();
-}
-
-function closeManageModal() {
-  mgEl('manage-modal').classList.remove('active');
-  closeNewForm();
-  mgPicking = null;
+  if (mgView !== view) return;
+  renderManage();
 }
 
 // 機種名として候補に出すもの（「DF,RV」のような複数機種のまとめ書きは除く）
@@ -139,196 +120,197 @@ function isShown(pn, x) {
   return currentProjects.some(p => p.project_number === pn && p.machine === colMachineKey(x.m, x.u));
 }
 
-function el(tag, cls, text) {
-  const e = document.createElement(tag);
-  if (cls) e.className = cls;
-  if (text != null) e.textContent = text;
-  return e;
+function machineLabel(m) {
+  return m || '(機種なし)';
 }
 
 function renderGroups(box, pn, list, makeButton) {
-  box.innerHTML = '';
   groupByMachine(list, pn).forEach(g => {
-    const row = el('div', 'mg-group');
-    row.appendChild(el('span', 'mg-group-name', g.m));
+    const row = el('div', 'am-group');
+    row.appendChild(el('span', '', g.m));
     g.items.forEach(x => row.appendChild(makeButton(x, pickLabel(x, g.hasUnits))));
     box.appendChild(row);
   });
 }
 
-// ─── 一覧 ─────────────────────────────────────────────
-function renderManageList() {
-  const list = mgEl('manage-list');
+// ─── 画面 ─────────────────────────────────────────────
+function renderManage() {
+  const view = mgView;
+  if (!view || !view.isConnected) return;
+  const old = view.querySelector('.am-scroll');
+  const top = old ? old.scrollTop : 0;
+  view.innerHTML = '';
+
   const cols = columnsByProject();
   const pns = Object.keys(cols).sort();
 
-  mgEl('manage-status').textContent =
-    pns.length === 0 ? '表示中の列はありません' : `${pns.length}工番・${currentProjects.length}列を表示中`;
+  const bar = el('div', 'am-bar');
+  bar.appendChild(el('b', '', pns.length ? `${pns.length}工番・${currentProjects.length}列を表示中` : '表示中の列はありません'));
+  bar.appendChild(el('span', 'am-hint', '変更はすぐに保存されます。列を外しても入力済みのデータは残ります。'));
+  if (!mgNewOpen) bar.appendChild(amBtn('am-btn dark', '＋ 工番を追加', () => { mgNewOpen = true; mgPicking = null; renderManage(); }));
+  view.appendChild(bar);
 
-  list.innerHTML = '';
-  if (pns.length === 0) list.appendChild(el('div', 'manage-msg', '右上の「＋ 工番を追加」から、表示する工番を追加してください。'));
-  pns.forEach(pn => list.appendChild(renderManageRow(pn, cols[pn])));
-  if (!mgEl('manage-new').hidden) renderNewForm();
+  const scroll = el('div', 'am-scroll');
+  if (mgNewOpen) scroll.appendChild(renderNewCard());
+  if (!pns.length) scroll.appendChild(el('div', 'am-muted', '右上の「＋ 工番を追加」から、表示する工番を追加してください。'));
+  const grid = el('div', 'am-jobs');
+  pns.forEach(pn => grid.appendChild(renderJobCard(pn, cols[pn])));
+  scroll.appendChild(grid);
+  view.appendChild(scroll);
+  scroll.scrollTop = top;
 }
 
-function renderManageRow(pn, cols) {
+function renderJobCard(pn, cols) {
   const cand = manageCandidates.get(pn) || { customer: '' };
-  const row = el('div', 'mg-row');
-
-  const head = el('div', 'mg-row-head');
-  head.appendChild(el('span', 'mg-pn', pn));
-  head.appendChild(el('span', 'mg-cust', cand.customer || cols[0].customer_name || ''));
-  head.appendChild(el('span', 'mg-count', `${cols.length}列`));
-  row.appendChild(head);
-
-  const chips = el('div', 'mg-chips');
-  cols.forEach((col, i) => chips.appendChild(renderColumnChip(col, i, cols)));
   const open = mgPicking === pn;
-  const add = el('button', 'mg-add-mc' + (open ? ' on' : ''), open ? '閉じる' : '＋ 機械を追加');
-  add.addEventListener('click', () => { mgPicking = open ? null : pn; renderManageList(); });
-  chips.appendChild(add);
-  row.appendChild(chips);
+  const card = el('div', 'am-card');
+
+  const band = el('div', 'am-band');
+  band.appendChild(el('b', '', pn));
+  band.appendChild(el('span', 'cust', cand.customer || cols[0].customer_name || ''));
+  band.appendChild(el('span', 'cnt', `${cols.length}台`));
+  band.appendChild(amBtn('am-btn sm' + (open ? ' on' : ''), open ? '閉じる' : '＋ 機械を追加', () => { mgPicking = open ? null : pn; renderManage(); }));
+  card.appendChild(band);
+
+  const tiles = el('div', 'am-tiles');
+  cols.forEach((col, i) => tiles.appendChild(renderColumnTile(col, i, cols)));
+  if (!cols.length) tiles.appendChild(el('span', 'am-empty-line', '表示する機械がありません'));
+  card.appendChild(tiles);
 
   if (open) {
-    const picker = el('div', 'mg-picker');
+    const picker = el('div', 'am-picker');
+    picker.appendChild(el('span', 'am-plabel', '追加できる機械・ユニット（全体工程表から）'));
     const rest = candidateList(pn).filter(x => !isShown(pn, x));
-    if (rest.length === 0) {
-      picker.appendChild(el('span', 'mg-picker-empty', '追加できる機械はありません'));
-    } else {
-      const box = el('div', 'mg-groups');
-      renderGroups(box, pn, rest, (x, label) => {
-        const b = el('button', 'mg-pick', '＋ ' + label);
-        b.addEventListener('click', () => addColumn(pn, x.m, x.u));
-        return b;
-      });
-      picker.appendChild(box);
-    }
-    row.appendChild(picker);
+    if (!rest.length) picker.appendChild(el('span', 'am-hint', '追加できる機械はありません'));
+    renderGroups(picker, pn, rest, (x, label) => amBtn('am-pick add', '＋ ' + label, () => addColumn(pn, x.m, x.u)));
+    card.appendChild(picker);
   }
-  return row;
+  return card;
 }
 
-function renderColumnChip(col, i, cols) {
-  const chip = el('span', 'mg-chip');
-  const mkBtn = (cls, text, title, onClick, disabled) => {
-    const b = el('button', cls, text);
-    b.title = title; b.disabled = !!disabled;
-    b.addEventListener('click', onClick);
+function renderColumnTile(col, i, cols) {
+  const t = el('div', 'am-tile');
+  const mv = (text, title, dir, disabled) => {
+    const b = amBtn('mv', text, () => moveColumn(cols, i, dir));
+    b.title = title; b.disabled = disabled;
     return b;
   };
-  chip.appendChild(mkBtn('mg-mv', '‹', '左へ移動', () => moveColumn(cols, i, -1), i === 0));
+  t.appendChild(mv('‹', '左へ移動', -1, i === 0));
   // ユニットの列は「機械名 ユニット名」、それ以外は列の名前をそのまま出す
-  chip.appendChild(el('b', null, col.unit ? col.link_machine : machineLabel(col.machine)));
-  if (col.unit) chip.appendChild(el('span', 'mg-unit', col.unit));
-  chip.appendChild(mkBtn('mg-mv', '›', '右へ移動', () => moveColumn(cols, i, 1), i === cols.length - 1));
-  chip.appendChild(mkBtn('mg-del', '✕', 'この列を外す（入力済みのデータは残ります）', () => removeColumn(col)));
-  return chip;
-}
-
-function machineLabel(m) {
-  return m || '(機種なし)';
+  const nm = el('span', 'nm');
+  nm.appendChild(el('b', '', col.unit ? col.link_machine : machineLabel(col.machine)));
+  if (col.unit) nm.appendChild(el('span', '', col.unit));
+  t.appendChild(nm);
+  t.appendChild(mv('›', '右へ移動', 1, i === cols.length - 1));
+  const del = amBtn('del', '✕', () => removeColumn(col));
+  del.title = 'この列を外す（入力済みのデータは残ります）';
+  t.appendChild(del);
+  return t;
 }
 
 // ─── 工番を追加 ───────────────────────────────────────
-function openNewForm() {
-  mgPicking = null;
-  mgEl('manage-new').hidden = false;
-  mgEl('manage-new-open').hidden = true;
-  mgPnInput.value = '';
-  mgNewSel.clear();
-  renderManageList();
-  mgPnInput.focus();
-}
-
 function closeNewForm() {
-  mgEl('manage-new').hidden = true;
-  mgEl('manage-new-open').hidden = false;
-  mgPnInput.value = '';
-  mgNewSel.clear();
-  showPnList(false);
+  mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
+  renderManage();
 }
 
-// プルダウンの候補: 全体工程表にあって、まだ表示していない工番（番号・顧客名で絞り込み）
+// 候補: 全体工程表にあって、まだ表示していない工番（番号・客先名で絞り込み）
 function pnOptions() {
   if (!manageCandidates) return [];
   const shown = columnsByProject();
-  const q = mgPnInput.value.trim().toLowerCase();
+  const q = mgNewQ.trim().toLowerCase();
   return [...manageCandidates.keys()]
     .filter(pn => !shown[pn])
     .filter(pn => !q || pn.toLowerCase().includes(q) || manageCandidates.get(pn).customer.toLowerCase().includes(q))
     .sort();
 }
 
-function showPnList(open) {
-  mgListOpen = open;
-  mgPnInput.closest('.mg-combo').classList.toggle('open', open);
-  const box = mgEl('manage-pn-list');
-  box.hidden = !open;
-  if (!open) { renderNewForm(); return; }
+function pickPn(pn) {
+  mgNewPn = pn;
+  mgNewSel = new Set();
+  renderManage();
+}
+
+function renderPnOptions(box) {
   box.innerHTML = '';
   const opts = pnOptions();
-  const cur = mgPnInput.value.trim();
   opts.forEach(pn => {
     const c = manageCandidates.get(pn);
-    const b = el('button', 'mg-opt' + (pn === cur ? ' active' : ''));
-    b.type = 'button';
-    b.appendChild(el('span', 'mg-opt-pn', pn));
-    b.appendChild(el('span', 'mg-opt-cust', c.customer));
-    b.appendChild(el('span', 'mg-opt-count', `${c.machines.size}機械`));
-    b.addEventListener('mousedown', e => { e.preventDefault(); pickPn(pn); });
+    const b = amBtn('am-opt', null, () => pickPn(pn));
+    b.appendChild(el('b', '', pn));
+    b.appendChild(el('span', 'cust', c.customer));
+    b.appendChild(el('span', 'cnt', `${c.machines.size}機械`));
     box.appendChild(b);
   });
-  if (opts.length === 0) box.appendChild(el('div', 'mg-opt-empty', '該当する工番はありません'));
+  if (!opts.length) box.appendChild(el('span', 'am-hint', '該当する工番はありません。全体工程表に無い工番は追加できません。'));
 }
 
-function pickPn(pn) {
-  mgPnInput.value = pn;
-  mgNewSel.clear();
-  showPnList(false);
-}
+function renderNewCard() {
+  const card = el('div', 'am-card am-new');
+  const head = el('div', 'am-new-head');
+  head.appendChild(el('b', '', '工番を追加'));
+  head.appendChild(el('span', '', '全体工程表にある工番から選びます'));
+  card.appendChild(head);
 
-function newCandidateList() {
-  const pn = mgPnInput.value.trim();
-  if (columnsByProject()[pn]) return [];
-  return candidateList(pn);
-}
+  const body = el('div', 'am-new-body');
+  const list = mgNewPn ? candidateList(mgNewPn) : [];
+  if (!mgNewPn) {
+    const inp = el('input', 'am-input');
+    inp.type = 'text'; inp.placeholder = '工番・客先名で絞り込み'; inp.autocomplete = 'off'; inp.value = mgNewQ;
+    const box = el('div', 'am-opts');
+    inp.addEventListener('input', () => { mgNewQ = inp.value; renderPnOptions(box); });
+    inp.addEventListener('keydown', e => { if (e.key === 'Enter' && !e.isComposing) { const o = pnOptions(); if (o.length) pickPn(o[0]); } });
+    body.appendChild(inp);
+    body.appendChild(box);
+    renderPnOptions(box);
+    setTimeout(() => inp.focus());
+  } else {
+    const cand = manageCandidates.get(mgNewPn);
+    const chosen = el('div', 'am-chosen');
+    chosen.appendChild(el('b', '', mgNewPn));
+    chosen.appendChild(el('span', '', cand ? cand.customer : ''));
+    chosen.appendChild(amBtn('am-btn sm', '工番を変える', () => { mgNewPn = null; mgNewSel = new Set(); renderManage(); }));
+    body.appendChild(chosen);
+    if (list.length) {
+      const rh = el('div', 'am-rowhead');
+      rh.appendChild(el('b', '', '表示する機械・ユニット'));
+      rh.appendChild(el('span', '', '全体工程表から拾っています。押して選択'));
+      rh.appendChild(amBtn('am-btn sm', mgNewSel.size === list.length ? 'すべて解除' : 'すべて選択', () => {
+        mgNewSel = mgNewSel.size === list.length ? new Set() : new Set(list.map(mgKey));
+        renderManage();
+      }));
+      body.appendChild(rh);
+      const groups = el('div', 'am-edcol');
+      renderGroups(groups, mgNewPn, list, (x, label) => {
+        const on = mgNewSel.has(mgKey(x));
+        return amBtn('am-pick' + (on ? ' on' : ''), (on ? '✓ ' : '') + label, () => {
+          if (on) mgNewSel.delete(mgKey(x)); else mgNewSel.add(mgKey(x));
+          renderManage();
+        });
+      });
+      body.appendChild(groups);
+    } else {
+      body.appendChild(el('div', 'am-warn', '全体工程表にこの工番の機械がありません。全体工程表を確認してください。'));
+    }
+  }
 
-function renderNewForm() {
-  if (!manageCandidates) return;
-  const pn = mgPnInput.value.trim();
-  const shown = !!columnsByProject()[pn];
-  const cand = shown ? null : manageCandidates.get(pn);
-  const list = newCandidateList();
-
-  mgEl('manage-new-cust').textContent = shown ? 'この工番はすでに表示中です' : (cand ? cand.customer : '');
-  mgEl('manage-new-machines').hidden = list.length === 0;
-  mgEl('manage-new-warn').hidden = !pn || !!cand || shown || mgListOpen;
-  mgEl('manage-new-all').textContent = list.length && mgNewSel.size === list.length ? 'すべて解除' : 'すべて選択';
-
-  renderGroups(mgEl('manage-new-groups'), pn, list, (x, label) => {
-    const on = mgNewSel.has(mgKey(x));
-    const b = el('button', 'mg-pick' + (on ? ' on' : ''), (on ? '✓ ' : '') + label);
-    b.addEventListener('click', () => {
-      if (on) mgNewSel.delete(mgKey(x)); else mgNewSel.add(mgKey(x));
-      renderNewForm();
-    });
-    return b;
-  });
-
-  const add = mgEl('manage-new-add');
-  add.disabled = !cand || mgNewSel.size === 0;
-  add.textContent = mgNewSel.size ? `${mgNewSel.size}列を追加` : '追加';
+  const foot = el('div', 'am-new-foot');
+  foot.appendChild(amBtn('am-btn', 'やめる', closeNewForm));
+  const add = amBtn('am-btn dark', mgNewSel.size ? `${mgNewSel.size}列を追加` : '追加', addNewProject);
+  add.disabled = !mgNewPn || !mgNewSel.size;
+  foot.appendChild(add);
+  body.appendChild(foot);
+  card.appendChild(body);
+  return card;
 }
 
 async function addNewProject() {
-  const pn = mgPnInput.value.trim();
-  const picks = newCandidateList().filter(x => mgNewSel.has(mgKey(x)));
+  const pn = mgNewPn;
+  const picks = candidateList(pn).filter(x => mgNewSel.has(mgKey(x)));
   if (!pn || picks.length === 0) return;
+  mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
   const rows = picks.map((x, i) => columnRow(pn, x.m, x.u, (i + 1) * 10));
-  if (await manageWrite(sb.from('denki_columns').insert(rows))) {
-    closeNewForm();
-    renderManageList();
-  }
+  await manageWrite(sb.from('denki_columns').insert(rows));
 }
 
 // ─── 列の追加・削除・並べ替え ─────────────────────────
@@ -340,10 +322,11 @@ async function manageWrite(promise) {
   const { error } = await promise;
   if (error) {
     alert('保存できませんでした。ログインが切れている場合は、ページを再読み込みしてください。\n' + error.message);
+    renderManage();
     return false;
   }
   await refreshDisplay();
-  if (manageCandidates) renderManageList();
+  if (manageCandidates) renderManage();
   return true;
 }
 

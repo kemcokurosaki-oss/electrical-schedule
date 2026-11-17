@@ -11,8 +11,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   <script src="m365-login.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261117v6">
-  <link rel="stylesheet" href="denki-v2.css?v=20261117v6">
+  <link rel="stylesheet" href="style.css?v=20261117v7">
+  <link rel="stylesheet" href="denki-v2.css?v=20261117v7">
   <!-- ガントチャート（gantt.js・taskpanel.js・tasklist.js・vendor）はファイルを残したまま、読み込みを止めています -->
 </head>
 <body class="v2" data-view="sheet">
@@ -76,60 +76,19 @@
   </div>
 </div>
 
-<!-- 工番・機械の登録（manage.js。中身は今までの工番管理と同じ） -->
-<div id="manage-modal">
-  <div class="manage-box">
-    <div class="manage-header">
-      <div class="manage-title">
-        <h2>工番・機械の登録</h2>
-        <span id="manage-status"></span>
-      </div>
-      <button class="btn btn-dark" id="manage-new-open">＋ 工番を追加</button>
-      <button class="manage-close" id="manage-close">✕</button>
-    </div>
-    <div class="mg-new" id="manage-new" hidden>
-      <div class="mg-new-row">
-        <span class="mg-label">工番</span>
-        <div class="mg-combo">
-          <div class="mg-combo-box">
-            <input type="text" id="manage-pn-input" placeholder="工番を入力・選択" autocomplete="off">
-            <button type="button" id="manage-pn-toggle" tabindex="-1">▼</button>
-          </div>
-          <div class="mg-combo-list" id="manage-pn-list" hidden></div>
-        </div>
-        <span class="mg-new-cust" id="manage-new-cust"></span>
-      </div>
-      <div class="mg-new-machines" id="manage-new-machines" hidden>
-        <div class="mg-new-mhead">
-          <span class="mg-label">表示する機械・ユニット</span>
-          <span class="mg-hint">全体工程表から拾っています。押して選択</span>
-          <button class="link" id="manage-new-all">すべて選択</button>
-        </div>
-        <div class="mg-groups mg-groups-box" id="manage-new-groups"></div>
-      </div>
-      <div class="mg-warn" id="manage-new-warn" hidden>全体工程表に無い工番です。工番の番号を確認してください。</div>
-      <div class="mg-new-btns">
-        <button class="btn" id="manage-new-cancel">やめる</button>
-        <button class="btn btn-dark" id="manage-new-add" disabled>追加</button>
-      </div>
-    </div>
-    <div class="manage-body" id="manage-list"></div>
-  </div>
-</div>
-
-<!-- 完了工番・ステップの設定（admin.js が中身を作る） -->
+<!-- 管理画面（工番・機械の登録／完了工番／ステップの設定）。中身は admin.js・manage.js が作る -->
 <div class="v2-modal" id="admin-modal" hidden>
   <div class="v2-modal-bg" data-close="1"></div>
   <div class="v2-modal-box" id="admin-modal-box"></div>
 </div>
 
-<script src="config.js?v=20261117v6"></script>
-<script src="state.js?v=20261117v6"></script>
-<script src="utils.js?v=20261117v6"></script>
-<script src="manage.js?v=20261117v6"></script>
-<script src="minutes.js?v=20261117v6"></script>
-<script src="sheet.js?v=20261117v6"></script>
-<script src="admin.js?v=20261117v6"></script>
-<script src="app.js?v=20261117v6"></script>
+<script src="config.js?v=20261117v7"></script>
+<script src="state.js?v=20261117v7"></script>
+<script src="utils.js?v=20261117v7"></script>
+<script src="manage.js?v=20261117v7"></script>
+<script src="minutes.js?v=20261117v7"></script>
+<script src="sheet.js?v=20261117v7"></script>
+<script src="admin.js?v=20261117v7"></script>
+<script src="app.js?v=20261117v7"></script>
 </body>
 </html>
