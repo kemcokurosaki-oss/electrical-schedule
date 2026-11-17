@@ -26,6 +26,10 @@ body.v2 #side-nav { width: 88px; min-width: 88px; flex-shrink: 0; background: #2
 .v2-np.active { background: #4a5a72; color: #fff; }
 .v2-nav-bottom { flex-shrink: 0; border-top: 1px solid #435064; padding-top: 10px; display: flex; flex-direction: column; align-items: center; gap: 10px; }
 .v2-admin { position: relative; width: 100%; }
+/* アカウントは人マークだけ。名前・メールは押したときのメニューに出す */
+body.v2 #side-nav #m365_user_chip { margin: 0; padding: 0; justify-content: center; }
+body.v2 #side-nav #m365_user_btn { padding: 2px; justify-content: center; }
+body.v2 #side-nav #m365_user_btn .m365-user-label { display: none; }
 .v2-admin-btn { width: 100%; padding: 9px 0; border: 1px solid #56647a; border-radius: 7px; background: #3b4759; color: #fff;
   font-weight: 700; font-size: 13px; font-family: inherit; cursor: pointer; }
 .v2-admin-menu { position: absolute; left: calc(100% + 12px); bottom: 0; z-index: 90; width: 200px; background: #fff; border: 1px solid #d5d9de;
