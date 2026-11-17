@@ -1,22 +1,7 @@
 // ─── 管理画面（v2.1） ─────────────────────────────────
-// 「管理」ボタンのメニューから開く。工番・機械の登録（manage.js）／完了工番／ステップの設定 を上のタブで切り替える
-const adminMenu = document.getElementById('admin-menu');
-// 左メニューは overflow: hidden なので、メニューは画面基準（fixed）でボタンの右に出す
-document.getElementById('btn-admin').addEventListener('click', e => {
-  e.stopPropagation();
-  if (adminMenu.hidden) {
-    const r = e.currentTarget.getBoundingClientRect();
-    const nav = document.getElementById('side-nav').getBoundingClientRect();
-    adminMenu.style.left = (nav.right + 12) + 'px';
-    adminMenu.style.bottom = (window.innerHeight - r.bottom) + 'px';
-  }
-  adminMenu.hidden = !adminMenu.hidden;
-});
-adminMenu.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') adminMenu.hidden = true; });
-document.addEventListener('click', e => { if (!adminMenu.hidden && !adminMenu.contains(e.target)) adminMenu.hidden = true; });
-document.getElementById('btn-manage').addEventListener('click', () => openAdmin('manage'));
-document.getElementById('btn-done-pns').addEventListener('click', () => openAdmin('done'));
-document.getElementById('btn-steps').addEventListener('click', () => openAdmin('steps'));
+// 「管理」ボタンを押したら、すぐに管理画面（工番・機械の登録タブ）を開く。
+// 工番・機械の登録（manage.js）／完了工番／ステップの設定 は画面上部のタブで切り替える
+document.getElementById('btn-admin').addEventListener('click', () => openAdmin('manage'));
 
 const adminModal = document.getElementById('admin-modal');
 const adminBox = document.getElementById('admin-modal-box');
