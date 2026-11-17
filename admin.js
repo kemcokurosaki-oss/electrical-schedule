@@ -1,7 +1,17 @@
 // ─── 管理者メニュー（v2） ─────────────────────────────────
 // 「管理」ボタンで 工番・機械の登録（manage.js）／完了工番／ステップの設定 を選ぶ
 const adminMenu = document.getElementById('admin-menu');
-document.getElementById('btn-admin').addEventListener('click', e => { e.stopPropagation(); adminMenu.hidden = !adminMenu.hidden; });
+// 左メニューは overflow: hidden なので、メニューは画面基準（fixed）でボタンの右に出す
+document.getElementById('btn-admin').addEventListener('click', e => {
+  e.stopPropagation();
+  if (adminMenu.hidden) {
+    const r = e.currentTarget.getBoundingClientRect();
+    const nav = document.getElementById('side-nav').getBoundingClientRect();
+    adminMenu.style.left = (nav.right + 12) + 'px';
+    adminMenu.style.bottom = (window.innerHeight - r.bottom) + 'px';
+  }
+  adminMenu.hidden = !adminMenu.hidden;
+});
 adminMenu.addEventListener('click', e => { if (e.target.tagName === 'BUTTON') adminMenu.hidden = true; });
 document.addEventListener('click', e => { if (!adminMenu.hidden && !adminMenu.contains(e.target)) adminMenu.hidden = true; });
 document.getElementById('btn-done-pns').addEventListener('click', openDonePns);
