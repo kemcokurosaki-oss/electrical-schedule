@@ -9,8 +9,8 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   <script src="m365-login.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261117v2">
-  <link rel="stylesheet" href="denki-v2.css?v=20261117v3">
+  <link rel="stylesheet" href="style.css?v=20261117v4">
+  <link rel="stylesheet" href="denki-v2.css?v=20261117v4">
   <!-- ガントチャート（gantt.js・taskpanel.js・tasklist.js・vendor）はファイルを残したまま、読み込みを止めています -->
 </head>
 <body class="v2" data-view="sheet">
@@ -45,6 +45,7 @@
     <header id="app-bar" class="v2-bar">
       <span class="v2-title" id="view-title">進捗確認表</span>
       <div class="v2-meeting" id="meeting-box"></div>
+      <button class="v2-global-btn" id="btn-global" type="button" title="工番によらない、全体の決定事項を右に開きます">全体の決定事項</button>
       <div class="v2-legend" id="sheet-legend">
         <span><i class="lg late"></i>遅れ</span>
         <span><i class="lg soon"></i>注意</span>
@@ -121,13 +122,13 @@
   <div class="v2-modal-box" id="admin-modal-box"></div>
 </div>
 
-<script src="config.js?v=20261117v2"></script>
-<script src="state.js?v=20261117v2"></script>
-<script src="utils.js?v=20261117v2"></script>
-<script src="manage.js?v=20261117v2"></script>
-<script src="minutes.js?v=20261117v2"></script>
-<script src="sheet.js?v=20261117v2"></script>
-<script src="admin.js?v=20261117v2"></script>
-<script src="app.js?v=20261117v2"></script>
+<script src="config.js?v=20261117v4"></script>
+<script src="state.js?v=20261117v4"></script>
+<script src="utils.js?v=20261117v4"></script>
+<script src="manage.js?v=20261117v4"></script>
+<script src="minutes.js?v=20261117v4"></script>
+<script src="sheet.js?v=20261117v4"></script>
+<script src="admin.js?v=20261117v4"></script>
+<script src="app.js?v=20261117v4"></script>
 </body>
 </html>

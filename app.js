@@ -103,7 +103,7 @@ async function loadData() {
       .select('project_number, machine, process_no, status, start_date, end_date, updated_at')
       .in('project_number', projectNumbers).order('project_number').order('machine').order('process_no')),
     fetchAll(() => sb.from('denki_item_memos').select('project_number, machine, process_no, body, updated_at')
-      .in('project_number', projectNumbers).order('project_number')),
+      .in('project_number', [...projectNumbers, GLOBAL_PN]).order('project_number')),
     fetchAll(() => sb.from('denki_item_info').select('project_number, machine, process_no, ball, due_date, steps, updated_at')
       .in('project_number', projectNumbers).order('project_number')),
   ]);

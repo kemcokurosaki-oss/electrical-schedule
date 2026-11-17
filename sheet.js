@@ -3,6 +3,7 @@
 //   予定日・状態 … denki_process_status（予定日は start_date・end_date に同じ日付）
 //   対応中・期限・ステップ … denki_item_info
 //   自由メモ … denki_item_memos（項目 0 は機械ごとの「その他のメモ」）
+//   全体の決定事項 … denki_item_memos の 工番「全体」・機械 ''・項目 0（工番によらないこと）
 //   会議中に変えたところは denki_history に自動で記録し、議事録になる（minutes.js）
 let itemMemos = {};   // noteKey → { body, updated_at }
 let itemInfo = {};    // noteKey → { ball, due_date, steps, updated_at }
@@ -13,6 +14,7 @@ const groupOpenOverride = {}; // 段階の開閉を押して変えたもの
 try { sheetPn = localStorage.getItem('denki_sheet_pn') || null; } catch (_) { /* 覚えていなければ全部 */ }
 
 const SHEET_OTHER_NO = 0;
+const GLOBAL_PN = '全体'; // 全体の決定事項を入れる工番の代わりの名前
 const SHEET_GROUPS = [
   { name: '設計情報の入手', from: 1, to: 7 },
   { name: '機器・操作盤', from: 8, to: 12 },
@@ -30,7 +32,7 @@ const SNAP_LABELS = { st: '状態', sched: '予定日', step: 'ステップ', ba
 const TRUCK_SVG = '<svg class="v2-truck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z M13.5 9.5h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>';
 
 function noteKey(pn, machine, no) { return `${pn}|${machine || ''}|${no || 0}`; }
-function procName(no) { return no ? (PROCESSES.find(p => p.no === no) || {}).name || '' : 'その他のメモ'; }
+function procName(no, pn) { return no ? (PROCESSES.find(p => p.no === no) || {}).name || '' : pn === GLOBAL_PN ? '決定事項' : 'その他のメモ'; }
 function recOf(pn, machine, no) { return statusMap[`${pn}__${machine}__${no}`] || {}; }
 function dateOf(rec) { return rec.end_date || rec.start_date || ''; }
 function daysFromToday(d) { return Math.round((parseLocalDate(d) - todayStart()) / 86400000); }
@@ -100,7 +102,7 @@ function snapOf(pn, machine, no) {
 function renderSheet() {
   const wrap = document.getElementById('sheet-wrap');
   if (sheetPn && !currentProjects.some(p => p.project_number === sheetPn)) setSheetPn(null);
-  if (sheetSel && !currentProjects.some(p => p.project_number === sheetSel.pn && p.machine === sheetSel.machine)) sheetSel = null;
+  if (sheetSel && sheetSel.pn !== GLOBAL_PN && !currentProjects.some(p => p.project_number === sheetSel.pn && p.machine === sheetSel.machine)) sheetSel = null;
   if (!currentProjects.length) {
     wrap.innerHTML = '<div class="no-data">表示する工番がありません。管理者メニューの「工番・機械の登録」から追加してください。</div>';
     renderDetail();
@@ -160,6 +162,7 @@ function renderSheet() {
   wrap.appendChild(grid);
   wrap.scrollLeft = scroll.l; wrap.scrollTop = scroll.t;
   renderDetail();
+  renderGlobalBtn();
 }
 
 function machineRow(col, opens) {
@@ -271,7 +274,7 @@ function renderDetail(force) {
   const ro = !canEdit;
 
   const head = el('div', 'dt-head');
-  head.appendChild(el('span', 'dt-sub', `${pn}　${machine}`));
+  head.appendChild(el('span', 'dt-sub', pn === GLOBAL_PN ? '全体（工番によらないこと）' : `${pn}　${machine}`));
   const close = el('button', 'dt-close', '✕');
   close.type = 'button'; close.title = '閉じる';
   close.addEventListener('click', closeDetail);
@@ -285,7 +288,7 @@ function renderDetail(force) {
   const ttl = el('div', 'dt-item');
   const nm = el('div', 'dt-name');
   if (no) nm.appendChild(el('span', 'dt-no', String(no)));
-  nm.appendChild(el('b', '', procName(no)));
+  nm.appendChild(el('b', '', procName(no, pn)));
   ttl.appendChild(nm);
   if (no && PROCESS_FLOW[no]) ttl.appendChild(el('span', 'dt-flow', PROCESS_FLOW[no]));
   if (no) {
@@ -338,7 +341,7 @@ function renderDetail(force) {
   // 今の状況
   const now = el('div', 'dt-now');
   const nh = el('div', 'dt-nowhead');
-  nh.appendChild(el('b', '', no ? '今の状況' : 'その他のメモ（項目以外のこと）'));
+  nh.appendChild(el('b', '', no ? '今の状況' : pn === GLOBAL_PN ? '全体の決定事項（すべての工番に関わること）' : 'その他のメモ（項目以外のこと）'));
   if (no && stepDefs[no]) nh.appendChild(el('span', 'dt-steptext', stepText(pn, machine, no) === 'すべて完了' ? '✓ すべて完了' : stepText(pn, machine, no)));
   now.appendChild(nh);
 
@@ -566,3 +569,12 @@ async function recordHistory(pn, machine, no, before) {
   }
   if (sheetSel && noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no) === key) loadDetailHistory(pn, machine, no);
 }
+
+// ─── 全体の決定事項 ─────────────────────────────────────
+// 上のバーのボタンで、右の詳細欄に「全体の決定事項」を開く（もう一度押すと閉じる）
+function renderGlobalBtn() {
+  const b = document.getElementById('btn-global');
+  if (!b) return;
+  b.classList.toggle('on', !!(sheetSel && sheetSel.pn === GLOBAL_PN));
+}
+document.getElementById('btn-global').addEventListener('click', () => selectCell(GLOBAL_PN, '', 0));

@@ -54,6 +54,12 @@ body.v2 #app-bar.v2-bar { background: #fff; min-height: 68px; padding: 8px 24px;
 .v2-meet-tag::before { content: ''; width: 8px; height: 8px; border-radius: 50%; background: #c9463f; }
 .v2-legend { margin-left: auto; display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 6px 12px; font-size: 13px; min-width: 0; }
 body[data-view="minutes"] .v2-legend { display: none; }
+/* 全体の決定事項（進捗確認表の画面だけ） */
+.v2-global-btn { height: 36px; padding: 0 14px; border: 1px solid #b7bec8; border-radius: 8px; background: #fff; color: #2a2f35;
+  font-weight: 700; font-size: 14px; font-family: inherit; cursor: pointer; white-space: nowrap; flex-shrink: 0; }
+.v2-global-btn:hover { background: #f3f6fa; }
+.v2-global-btn.on { background: #2a2f35; border-color: #2a2f35; color: #fff; }
+body[data-view="minutes"] .v2-global-btn { display: none; }
 .v2-legend span { display: flex; align-items: center; gap: 5px; white-space: nowrap; }
 .lg { width: 20px; height: 13px; border-radius: 3px; border: 1px solid; box-sizing: border-box; display: inline-block; position: relative; }
 .lg.late { background: #f5d5d3; border-color: #e3a19c; } .lg.soon { background: #f8e6bb; border-color: #e6c779; }

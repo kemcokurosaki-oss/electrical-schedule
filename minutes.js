@@ -57,19 +57,20 @@ function renderMinutesSide() {
 function minutesGroups() {
   const order = new Map(allColumns.map((c, i) => [`${c.project_number}|${c.machine}`, i]));
   const rows = [...minutesRows].sort((a, b) =>
-    a.project_number.localeCompare(b.project_number)
+    (b.project_number === GLOBAL_PN) - (a.project_number === GLOBAL_PN) // 全体の決定事項を先頭に
+    || a.project_number.localeCompare(b.project_number)
     || (order.get(`${a.project_number}|${a.machine}`) ?? 999) - (order.get(`${b.project_number}|${b.machine}`) ?? 999)
     || String(a.machine).localeCompare(String(b.machine))
     || (a.process_no || 99) - (b.process_no || 99));
   const groups = [];
   rows.forEach(r => {
     let g = groups.find(x => x.pn === r.project_number);
-    if (!g) groups.push(g = { pn: r.project_number, cust: customerOf[r.project_number] || '', machines: [] });
+    if (!g) groups.push(g = { pn: r.project_number, cust: r.project_number === GLOBAL_PN ? '工番によらないこと' : customerOf[r.project_number] || '', machines: [] });
     let m = g.machines.find(x => x.name === r.machine);
     if (!m) g.machines.push(m = { name: r.machine, items: [] });
     m.items.push({
       no: r.process_no ? String(r.process_no) : '－',
-      name: procName(r.process_no),
+      name: procName(r.process_no, r.project_number),
       lines: (r.changed || []).map(f => ({ k: SNAP_LABELS[f], v: f === 'memo' ? (r.cur[f] || '（なし）') : `${histValue(f, r.base[f])} → ${histValue(f, r.cur[f])}` })),
     });
   });
@@ -83,7 +84,7 @@ function minutesText(groups) {
   groups.forEach(g => {
     out.push(`■ ${g.pn} ${g.cust}`);
     g.machines.forEach(m => {
-      out.push(`【${m.name}】`);
+      if (m.name) out.push(`【${m.name}】`);
       m.items.forEach(it => {
         out.push(`${it.no} ${it.name}`);
         it.lines.forEach(l => out.push(`　${l.k}：${String(l.v).replace(/\n/g, '\n　　')}`));
@@ -128,7 +129,7 @@ function renderMinutesMain() {
     gb.appendChild(gh);
     g.machines.forEach(m => {
       const mb = el('div', 'mn-machine');
-      mb.appendChild(el('b', 'mn-mname', m.name));
+      if (m.name) mb.appendChild(el('b', 'mn-mname', m.name));
       m.items.forEach(it => {
         const ib = el('div', 'mn-item');
         ib.appendChild(el('span', 'mn-no', it.no));
@@ -156,7 +157,7 @@ function printMinutes(groups) {
   if (!w) { alert('ポップアップが止められています。許可してからもう一度押してください。'); return; }
   const esc = escapeHtml;
   const html = groups.map(g => `<h2>${esc(g.pn)} <small>${esc(g.cust)}</small></h2>` + g.machines.map(m =>
-    `<h3>${esc(m.name)}</h3>` + m.items.map(it => `<div class="it"><b>${esc(it.no)} ${esc(it.name)}</b>` +
+    (m.name ? `<h3>${esc(m.name)}</h3>` : '') + m.items.map(it => `<div class="it"><b>${esc(it.no)} ${esc(it.name)}</b>` +
       it.lines.map(l => `<div class="ln"><span>${esc(l.k)}</span>${esc(l.v).replace(/\n/g, '<br>')}</div>`).join('') + '</div>').join('')).join('')).join('');
   w.document.write(`<!DOCTYPE html><html lang="ja"><head><meta charset="UTF-8"><title>${esc(minutesTitle())}</title><style>
     @page{size:A4;margin:16mm}body{font-family:'Noto Sans JP','メイリオ',sans-serif;color:#222;font-size:10.5pt;line-height:1.6}
