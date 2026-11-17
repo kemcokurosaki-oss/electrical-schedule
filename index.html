@@ -9,143 +9,82 @@
   <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.117.3/dist/umd/supabase.js" integrity="sha384-BWcjm9OdFth9TbhCxZPdm+gAOUMAzQy9nmTs12ioXdCcbVnJaPMn+fMUoQCLt60R" crossorigin="anonymous"></script>
   <script src="m365-login.js"></script>
-  <link rel="stylesheet" href="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.css">
-  <script src="vendor/dhtmlxgantt-10.0.3/dhtmlxgantt.js"></script>
-  <link rel="stylesheet" href="style.css?v=20261110as">
+  <link rel="stylesheet" href="style.css?v=20261117v2">
+  <link rel="stylesheet" href="denki-v2.css?v=20261117v2">
+  <!-- ガントチャート（gantt.js・taskpanel.js・tasklist.js・vendor）はファイルを残したまま、読み込みを止めています -->
 </head>
-<body data-view="sheet">
+<body class="v2" data-view="sheet">
 
 <div id="loading-overlay" class="visible">読み込み中...</div>
 
 <div id="app">
-  <!-- 左メニュー -->
+  <!-- 左メニュー（細い表示だけ） -->
   <nav id="side-nav">
-    <div class="nav-brand">
-      <!-- アプリのアイコン。細い表示のときは押すとメニューが開く -->
-      <button class="nav-logo" id="nav-logo" type="button">
-        <svg class="nav-logo-mark" width="32" height="32" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#e3e6ea"/><rect x="6.5" y="8.5" width="19" height="17" rx="2.5" fill="none" stroke="#2a2f35" stroke-width="2"/><path d="M6.5 13.5 H25.5 M12 6 V10 M20 6 V10" stroke="#2a2f35" stroke-width="2" stroke-linecap="round"/><path d="M17.5 15.5 L13 21 H16 L15 24.5 L19.5 19 H16.5 Z" fill="#e8a317"/></svg>
-        <span class="nav-logo-open"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M14 10l2 2-2 2"/></svg></span>
-      </button>
-      <div class="nav-brand-text"><b>電気工程表</b><small>KUSAKABE</small></div>
-      <button class="nav-collapse" id="nav-collapse" type="button" title="メニューを縮める"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M9 4v16"/><path d="M16 10l-2 2 2 2"/></svg></button>
-    </div>
-    <div class="nav-label">画面</div>
-    <button class="nav-item active" id="tab-sheet" title="進捗確認表"><span class="nav-dot"></span><span class="nav-full">進捗確認表</span><span class="nav-short">進捗表</span></button>
-    <button class="nav-item" id="tab-gantt" title="ガントチャート"><span class="nav-dot"></span><span class="nav-full">ガントチャート</span><span class="nav-short">ガント</span></button>
-    <button class="nav-item" id="tab-minutes" title="議事録"><span class="nav-dot"></span><span class="nav-full">議事録</span><span class="nav-short">議事録</span></button>
-    <div class="nav-label">工事番号</div>
-    <div id="nav-projects"></div>
-    <!-- 管理者メニュー（管理者だけに表示） -->
-    <div class="nav-admin" id="nav-admin" hidden>
-      <div class="nav-label nav-admin-label">管理者メニュー</div>
-      <button class="nav-admin-btn" id="btn-manage" title="工番管理"><span class="nav-full">工番管理</span><span class="nav-short">管理</span></button>
-    </div>
-    <div class="nav-bottom">
+    <button class="v2-logo" id="nav-logo" type="button" title="電気工程表（ページを開き直す）">
+      <svg width="34" height="34" viewBox="0 0 32 32" aria-hidden="true"><rect width="32" height="32" rx="7" fill="#fff"/><rect x="6.5" y="8.5" width="19" height="17" rx="2.5" fill="none" stroke="#2f3a4a" stroke-width="2"/><path d="M6.5 13.5 H25.5 M12 6 V10 M20 6 V10" stroke="#2f3a4a" stroke-width="2" stroke-linecap="round"/><path d="M17.5 15.5 L13 21 H16 L15 24.5 L19.5 19 H16.5 Z" fill="#e8a317"/></svg>
+    </button>
+    <button class="v2-nav-item active" id="tab-sheet" type="button" title="進捗確認表">進捗表</button>
+    <button class="v2-nav-item" id="tab-minutes" type="button" title="議事録">議事録</button>
+    <div class="v2-nav-pns" id="nav-projects"></div>
+    <div class="v2-nav-bottom">
+      <div class="v2-admin" id="nav-admin" hidden>
+        <button class="v2-admin-btn" id="btn-admin" type="button" title="管理者メニュー">管理</button>
+        <div class="v2-admin-menu" id="admin-menu" hidden>
+          <div class="v2-admin-title">管理者メニュー</div>
+          <button id="btn-manage" type="button">工番・機械の登録</button>
+          <button id="btn-done-pns" type="button">完了工番</button>
+          <button id="btn-steps" type="button">ステップの設定</button>
+        </div>
+      </div>
       <!-- ここにログイン中のユーザー表示が入る（m365-login.js） -->
       <span id="nav-user-anchor" hidden></span>
     </div>
   </nav>
 
   <div id="main">
-    <!-- 上部バー -->
-    <header id="app-bar">
-      <div class="bar-title"><span id="view-title">進捗確認表</span><span id="view-sub"></span></div>
-      <button class="lamp late" id="late-lamp" title="遅れている工程だけを表示"><span class="lamp-dot"></span>遅れ <span id="late-count">0</span>件</button>
-      <button class="lamp soon" id="soon-lamp"><span class="lamp-dot"></span>注意 <span id="soon-count">0</span>件</button>
-      <div class="bar-meta" id="minutes-meta"></div><!-- 議事録の画面だけ（引き継ぎ元・最終更新） -->
-      <div class="bar-right">
-        <div class="seg">
-          <button class="active" id="zoom-day">日単位</button>
-          <button id="zoom-week">週単位</button>
-        </div>
-        <button class="btn" id="btn-today">今日へ移動</button>
+    <header id="app-bar" class="v2-bar">
+      <span class="v2-title" id="view-title">進捗確認表</span>
+      <div class="v2-meeting" id="meeting-box"></div>
+      <div class="v2-legend" id="sheet-legend">
+        <span><i class="lg late"></i>遅れ</span>
+        <span><i class="lg soon"></i>注意</span>
+        <span><i class="lg wip"></i>作業中</span>
+        <span><i class="lg wait"></i>確認依頼中</span>
+        <span><i class="lg order"></i>手配中</span>
+        <span><i class="lg yet"></i>未着手</span>
+        <span><i class="lg done"></i>完了</span>
+        <span><i class="lg na"></i>対象外</span>
+        <span><i class="lg missing"></i>日付なし</span>
+        <span><i class="lg memo"></i>メモあり</span>
       </div>
+      <span class="v2-save" id="save-status"></span>
     </header>
 
-    <!-- 進捗確認表（メイン）: 行が項目、列が工番の機械（予定日・状態＋メモ）。メモは議事録の欄 -->
+    <!-- 進捗確認表: 1台の機械を1行、項目を横に並べる。マスを押すと右に詳細 -->
     <div id="view-sheet" class="view active">
-      <div id="sheet-tools"></div>
       <div id="sheet-wrap"></div>
+      <aside id="sheet-detail" hidden></aside>
     </div>
 
-    <!-- ガントビュー（ガントチャートだけ。右のタスクリストと下の議事録欄は今は出さない＝ .simple） -->
-    <div id="view-gantt" class="view simple">
-      <div id="gantt-col">
-        <div class="filter-row" id="gantt-filters">
-          <span class="f-title">絞り込み</span>
-          <button class="chip late" data-filter="late"><span class="chip-dot"></span>遅れのみ</button>
-          <button class="chip soon" data-filter="soon"><span class="chip-dot"></span>注意のみ</button>
-          <button class="chip" data-filter="hideDone"><span class="chip-dot done"></span>完了を隠す</button>
-          <button class="chip" data-filter="mine"><span class="chip-dot mine"></span>自分の担当</button>
-          <span class="sep"></span>
-          <span class="f-label">工番</span>
-          <span class="chip-group" id="filter-pns"></span>
-          <span class="sep"></span>
-          <span class="f-label">部署</span>
-          <span class="chip-group" id="filter-depts"></span>
-          <button class="link" id="filter-clear" hidden>すべて解除</button>
-        </div>
-        <div class="tool-row">
-          <span class="f-title">バーの色</span>
-          <div class="seg sm">
-            <button id="bar-status">状態</button>
-            <button id="bar-dept">部署</button>
-          </div>
-          <button class="link" id="btn-expand">すべて開く</button>
-          <button class="link" id="btn-collapse">工番だけ表示</button>
-          <div class="gantt-legend" id="gantt-legend"></div>
-        </div>
-        <div id="gantt-body">
-          <div id="gantt-main">
-            <div id="gantt-wrap">
-              <div id="gantt-container"></div>
-              <div id="gantt-empty" hidden>条件に合う工程はありません</div>
-            </div>
-            <!-- 下の議事録欄（ガントの下だけ） -->
-            <section id="min-dock">
-              <div class="dock-head">
-                <button class="dock-toggle" id="dock-toggle" title="開く">▲</button>
-                <span class="dock-title">議事録</span>
-                <select id="dock-date" class="dock-date" title="表示する議事録の日付（過去の回も選べます）"></select>
-                <span class="past-tag" id="dock-past" hidden>過去の議事録</span>
-                <span class="dock-meta" id="dock-meta"></span>
-                <span id="dock-save"></span>
-              </div>
-              <div class="dock-tabbar" id="dock-tabbar"></div>
-              <div class="dock-body" id="dock-body"></div>
-            </section>
-          </div>
-          <!-- 機械の行を押すと出る、その機械のタスクリスト（縦いっぱい）。閉じているときは細いカード -->
-          <button id="tl-tab" type="button" title="タスクリストを開く"></button>
-          <aside id="tl-panel"></aside>
-        </div>
-      </div>
-    </div>
-
-    <!-- 議事録ビュー -->
+    <!-- 議事録: 会議中の変更から自動で作る -->
     <div id="view-minutes" class="view">
-      <aside id="minutes-side">
-        <div id="minutes-new"></div>
-        <label class="minutes-search">日付で探す<input type="date" id="minutes-date"></label>
-        <div id="minutes-list"></div>
-      </aside>
+      <aside id="minutes-side"></aside>
       <section id="minutes-main"></section>
     </div>
   </div>
 </div>
 
-<!-- 工番管理モーダル -->
+<!-- 工番・機械の登録（manage.js。中身は今までの工番管理と同じ） -->
 <div id="manage-modal">
   <div class="manage-box">
     <div class="manage-header">
       <div class="manage-title">
-        <h2>工番管理</h2>
+        <h2>工番・機械の登録</h2>
         <span id="manage-status"></span>
       </div>
       <button class="btn btn-dark" id="manage-new-open">＋ 工番を追加</button>
       <button class="manage-close" id="manage-close">✕</button>
     </div>
-    <!-- 工番を追加: 工番を選ぶと、全体工程表の機械・ユニットが並ぶ -->
     <div class="mg-new" id="manage-new" hidden>
       <div class="mg-new-row">
         <span class="mg-label">工番</span>
@@ -176,26 +115,19 @@
   </div>
 </div>
 
-<!-- 議事録の印刷プレビュー -->
-<div id="print-view">
-  <div class="pv-bar">
-    <b>印刷プレビュー（A4）</b>
-    <span>印刷画面で「PDFに保存」を選ぶとPDFになります</span>
-    <button class="btn" id="pv-print">印刷する</button>
-    <button class="btn btn-ghost" id="pv-close">閉じる</button>
-  </div>
-  <div class="pv-page" id="pv-page"></div>
+<!-- 完了工番・ステップの設定（admin.js が中身を作る） -->
+<div class="v2-modal" id="admin-modal" hidden>
+  <div class="v2-modal-bg" data-close="1"></div>
+  <div class="v2-modal-box" id="admin-modal-box"></div>
 </div>
 
-<script src="config.js?v=20261105adm"></script>
-<script src="state.js?v=20261104u"></script>
-<script src="utils.js?v=20261104u"></script>
-<script src="tasklist.js?v=20261106sh"></script>
-<script src="taskpanel.js?v=20261105tp"></script>
-<script src="gantt.js?v=20261106sh"></script>
-<script src="manage.js?v=20261105mg"></script>
-<script src="minutes.js?v=20261110sh"></script>
-<script src="sheet.js?v=20261110as"></script>
-<script src="app.js?v=20261110sh"></script>
+<script src="config.js?v=20261117v2"></script>
+<script src="state.js?v=20261117v2"></script>
+<script src="utils.js?v=20261117v2"></script>
+<script src="manage.js?v=20261117v2"></script>
+<script src="minutes.js?v=20261117v2"></script>
+<script src="sheet.js?v=20261117v2"></script>
+<script src="admin.js?v=20261117v2"></script>
+<script src="app.js?v=20261117v2"></script>
 </body>
 </html>

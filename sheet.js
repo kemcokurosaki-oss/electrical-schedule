@@ -1,421 +1,568 @@
-// ─── 進捗確認表（メイン画面） ─────────────────────────────
-// Excel「電気工程確認会議」と同じ形の表。行が項目（config.js の PROCESSES）、列が工番の機械。
-// 機械ごとに「予定日・状態」と「メモ」の2列。
-//   予定日・状態 … 今の状態だけを持つ（denki_process_status。予定日は start_date・end_date に同じ日付を入れる）
-//   メモ       … 今の内容（denki_item_memos の 工番＋機械＋項目。項目 0 は機械ごとの「その他」）。文字だけ。
-//                上の「議事録を作成」を押すと、そのときのメモから議事録を作る（前回との違いを赤・青で表示。minutes.js）
-let itemMemos = {};     // noteKey → メモの文章（app.js の loadData で読む）
-let sheetPns = null;    // 表示する工番（null はすべて）
-let sheetMemo = true;   // メモの列を表示するか
-try {
-  const s = JSON.parse(localStorage.getItem('denki_sheet_pns'));
-  sheetPns = Array.isArray(s) && s.length ? new Set(s) : null;
-  sheetMemo = localStorage.getItem('denki_sheet_memo') !== '0';
-} catch (_) { /* 読めなければ最初の状態 */ }
+// ─── 進捗確認表（v2） ─────────────────────────────────────
+// 1台の機械を1行、項目（config.js の PROCESSES）を横に並べる。マスを押すと右に詳細表示。
+//   予定日・状態 … denki_process_status（予定日は start_date・end_date に同じ日付）
+//   対応中・期限・ステップ … denki_item_info
+//   自由メモ … denki_item_memos（項目 0 は機械ごとの「その他のメモ」）
+//   会議中に変えたところは denki_history に自動で記録し、議事録になる（minutes.js）
+let itemMemos = {};   // noteKey → { body, updated_at }
+let itemInfo = {};    // noteKey → { ball, due_date, steps, updated_at }
+let stepDefs = {};    // 項目番号 → ステップ名の配列
+let sheetPn = null;   // 表示する工番（null はすべて）
+let sheetSel = null;  // 選んでいるマス { pn, machine, no }
+const groupOpenOverride = {}; // 段階の開閉を押して変えたもの
+try { sheetPn = localStorage.getItem('denki_sheet_pn') || null; } catch (_) { /* 覚えていなければ全部 */ }
 
-const SHEET_OTHER_NO = 0; // 機械ごとの「その他」欄の項目番号
+const SHEET_OTHER_NO = 0;
+const SHEET_GROUPS = [
+  { name: '設計情報の入手', from: 1, to: 7 },
+  { name: '機器・操作盤', from: 8, to: 12 },
+  { name: '電気図面・手配', from: 13, to: 17 },
+  { name: '製作・試運転', from: 18, to: 22 },
+];
+// 列の見出しに出す短い名前
+const PROC_SHORT = { 1: '既設図面', 2: 'リスト', 3: '部品表\nM・C', 4: '部品表\nM・S・I', 5: 'エア回路', 6: '油圧回路', 7: '運転方案',
+  8: '先行手配', 9: '機器リスト', 10: 'リスト確認', 11: '外形図', 12: '外形図確認', 13: '電気図面', 14: '部品手配', 15: '確認用図',
+  16: '確認用確認', 17: '最終図面', 18: '部品入荷', 19: '艤装開始', 20: '盤組開始', 21: '盤立上げ', 22: '試運転' };
+const BALL_ROWS = [['M', 'E', 'S', 'A'], ['資材', '客先', '代理店']];
+const ST_CLASS = { '作業中': 'wip', '確認依頼中': 'wait', '手配中': 'order', '完了': 'done', '対象外': 'na', '未': 'yet' };
+const SNAP_FIELDS = ['st', 'sched', 'step', 'ball', 'due', 'memo'];
+const SNAP_LABELS = { st: '状態', sched: '予定日', step: 'ステップ', ball: '対応中', due: '期限', memo: '自由メモ' };
+const TRUCK_SVG = '<svg class="v2-truck" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M2.5 6.5h11v9h-11z M13.5 9.5h4l3 3v3h-7z"/><circle cx="6.5" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/></svg>';
 
-function noteKey(pn, machine, no) {
-  return `${pn}|${machine || ''}|${no || 0}`;
+function noteKey(pn, machine, no) { return `${pn}|${machine || ''}|${no || 0}`; }
+function procName(no) { return no ? (PROCESSES.find(p => p.no === no) || {}).name || '' : 'その他のメモ'; }
+function recOf(pn, machine, no) { return statusMap[`${pn}__${machine}__${no}`] || {}; }
+function dateOf(rec) { return rec.end_date || rec.start_date || ''; }
+function daysFromToday(d) { return Math.round((parseLocalDate(d) - todayStart()) / 86400000); }
+function dueOf(rec) {
+  const d = dateOf(rec);
+  if (!d || rec.status === '完了' || rec.status === '対象外') return '';
+  const n = daysFromToday(d);
+  return n < 0 ? 'late' : n <= WARN_DAYS ? 'soon' : '';
+}
+// 対象外以外は予定日が必須
+function isMissingDate(rec) { return rec.status !== '対象外' && !dateOf(rec); }
+function md(d) { if (!d) return ''; const x = parseLocalDate(d); return `${x.getMonth() + 1}/${x.getDate()}`; }
+function ymd(d) { if (!d) return ''; const x = parseLocalDate(d); return `${x.getFullYear()}/${x.getMonth() + 1}/${x.getDate()}`; }
+function memoOf(pn, machine, no) { return (itemMemos[noteKey(pn, machine, no)] || {}).body || ''; }
+function infoOf(pn, machine, no) { return itemInfo[noteKey(pn, machine, no)] || {}; }
+function el(tag, cls, text) {
+  const e = document.createElement(tag);
+  if (cls) e.className = cls;
+  if (text !== undefined) e.textContent = text;
+  return e;
 }
 
-function sheetGroups() {
+function setSheetPn(pn) {
+  sheetPn = pn;
+  try { if (pn) localStorage.setItem('denki_sheet_pn', pn); else localStorage.removeItem('denki_sheet_pn'); } catch (_) { /* 覚えられなくても表示はする */ }
+}
+function sheetCols() { return currentProjects.filter(p => !sheetPn || p.project_number === sheetPn); }
+function sheetGroups(cols) {
   const groups = [];
-  currentProjects.forEach(p => {
-    if (sheetPns && !sheetPns.has(p.project_number)) return;
+  cols.forEach(p => {
     const last = groups[groups.length - 1];
     if (last && last.pn === p.project_number) last.cols.push(p);
     else groups.push({ pn: p.project_number, customer: p.customer_name, cols: [p] });
   });
   return groups;
 }
-
-// 工場出荷の日（全体工程表のタスク「工場出荷」）
-function shipDateOf(proj) {
-  const t = (ganttTasks[`${proj.project_number}__${proj.machine}`] || []).find(x => String(x.text || '').trim() === '工場出荷');
+function shipDateOf(col) {
+  const t = (ganttTasks[`${col.project_number}__${col.machine}`] || []).find(x => String(x.text || '').trim() === '工場出荷');
   return t ? (t.end_date || t.start_date || '') : '';
 }
-
-// 予定日の色: 完了・対象外以外で、過ぎていれば遅れ、WARN_DAYS 日以内なら注意
-function dueClass(rec) {
-  const d = rec && (rec.end_date || rec.start_date);
-  if (!d || rec.status === '完了' || rec.status === '対象外') return '';
-  const days = Math.round((parseLocalDate(d) - todayStart()) / 86400000);
-  return days < 0 ? 'due-late' : days <= WARN_DAYS ? 'due-soon' : '';
+// 段階の全部の項目が完了・対象外なら、最初は閉じて表示する
+function groupIsOpen(g, cols) {
+  if (groupOpenOverride[g.name] !== undefined) return groupOpenOverride[g.name];
+  return !cols.every(c => { for (let no = g.from; no <= g.to; no++) { const s = recOf(c.project_number, c.machine, no).status; if (s !== '完了' && s !== '対象外') return false; } return true; });
 }
 
-let sheetRenderSeq = 0;
-async function renderSheet() {
-  const seq = ++sheetRenderSeq;
-  renderSheetTools();
+// ステップのチェック（保存が無ければ、状態が完了なら全部チェック済みとして見せる）
+function stepChecks(pn, machine, no) {
+  const defs = stepDefs[no] || [];
+  const saved = infoOf(pn, machine, no).steps;
+  const done = recOf(pn, machine, no).status === '完了';
+  return defs.map((_, i) => Array.isArray(saved) && saved[i] !== undefined ? !!saved[i] : done);
+}
+function stepText(pn, machine, no) {
+  const defs = stepDefs[no] || [];
+  if (!defs.length) return '';
+  const n = stepChecks(pn, machine, no).filter(Boolean).length;
+  return n === defs.length ? 'すべて完了' : `${n} / ${defs.length}`;
+}
+// 議事録用に、項目の今の内容をまとめる
+function snapOf(pn, machine, no) {
+  const r = no ? recOf(pn, machine, no) : {}, inf = infoOf(pn, machine, no);
+  return { st: r.status || '', sched: dateOf(r), step: no ? stepText(pn, machine, no) : '', ball: inf.ball || '', due: inf.due_date || '', memo: memoOf(pn, machine, no) };
+}
+
+// ─── 表 ─────────────────────────────────────────────
+function renderSheet() {
   const wrap = document.getElementById('sheet-wrap');
-  if (currentProjects.length === 0) {
-    wrap.innerHTML = '<div class="no-data">表示する列がありません。左メニューの「工番管理」から工番と機械を追加してください。</div>';
+  if (sheetPn && !currentProjects.some(p => p.project_number === sheetPn)) setSheetPn(null);
+  if (sheetSel && !currentProjects.some(p => p.project_number === sheetSel.pn && p.machine === sheetSel.machine)) sheetSel = null;
+  if (!currentProjects.length) {
+    wrap.innerHTML = '<div class="no-data">表示する工番がありません。管理者メニューの「工番・機械の登録」から追加してください。</div>';
+    renderDetail();
     return;
   }
-  if (seq !== sheetRenderSeq) return;
-  const scroll = { left: wrap.scrollLeft, top: wrap.scrollTop };
+  const cols = sheetCols();
+  const opens = SHEET_GROUPS.map(g => groupIsOpen(g, cols));
+  const scroll = { l: wrap.scrollLeft, t: wrap.scrollTop };
+  const grid = el('div', 'v2-grid');
+
+  const head = el('div', 'v2-head');
+  head.appendChild(el('div', 'v2-corner'));
+  SHEET_GROUPS.forEach((g, i) => {
+    const gh = el('div', 'v2-gh' + (opens[i] ? '' : ' closed'));
+    const t = el('button', 'v2-gtitle');
+    t.type = 'button';
+    t.title = '押すとたたむ／開く';
+    t.innerHTML = `<span class="v2-caret">${opens[i] ? '▼' : '▶'}</span><span></span>`;
+    t.lastChild.textContent = opens[i] ? g.name : `${g.from}～${g.to}`;
+    t.addEventListener('click', () => { groupOpenOverride[g.name] = !opens[i]; renderSheet(); });
+    gh.appendChild(t);
+    if (opens[i]) {
+      const nums = el('div', 'v2-nums');
+      for (let no = g.from; no <= g.to; no++) {
+        const n = el('div', 'v2-num' + (sheetSel && sheetSel.no === no ? ' sel' : ''));
+        n.title = `${no} ${procName(no)}`;
+        n.appendChild(el('b', '', String(no)));
+        n.appendChild(el('span', '', PROC_SHORT[no] || ''));
+        nums.appendChild(n);
+      }
+      gh.appendChild(nums);
+    } else {
+      const s = el('div', 'v2-num-closed', g.name);
+      gh.appendChild(s);
+    }
+    head.appendChild(gh);
+  });
+  const sh = el('div', 'v2-gh v2-ship-h');
+  sh.innerHTML = `<span class="v2-ship-label">${TRUCK_SVG}工場出荷</span>`;
+  head.appendChild(sh);
+  grid.appendChild(head);
+
+  sheetGroups(cols).forEach(g => {
+    const block = el('div', 'v2-pnblock');
+    const pr = el('div', 'v2-pnrow');
+    const lab = el('div', 'v2-pnlabel');
+    lab.title = g.customer || '';
+    lab.appendChild(el('b', '', g.pn));
+    lab.appendChild(el('span', '', g.customer || ''));
+    pr.appendChild(lab);
+    block.appendChild(pr);
+    g.cols.forEach(col => block.appendChild(machineRow(col, opens)));
+    grid.appendChild(block);
+  });
+
   wrap.innerHTML = '';
-  wrap.appendChild(buildSheetTable());
-  wrap.querySelectorAll('.sh-memo-input').forEach(fitMemoHeight);
-  fixSheetSticky(wrap);
-  wrap.scrollLeft = scroll.left; wrap.scrollTop = scroll.top;
+  wrap.appendChild(grid);
+  wrap.scrollLeft = scroll.l; wrap.scrollTop = scroll.t;
+  renderDetail();
 }
 
-// 左に固定する No.・項目・流れの位置は、実際の列の幅から決める（幅がずれて No. が隠れないように）
-function fixSheetSticky(wrap) {
-  const head = wrap.querySelector('thead tr');
-  if (!head) return;
-  let left = 0;
-  ['sh-no', 'sh-name', 'sh-flow'].forEach(cls => {
-    const th = head.querySelector('.' + cls);
-    wrap.querySelectorAll('.' + cls).forEach(el => { el.style.left = left + 'px'; });
-    left += th.getBoundingClientRect().width;
-  });
-}
-
-function buildSheetTable() {
-  const groups = sheetGroups();
-  const span = sheetMemo ? 2 : 1;
-  const table = document.createElement('table');
-  table.className = 'sh-table' + (sheetMemo ? '' : ' no-memo');
-  const thead = document.createElement('thead');
-  const r1 = document.createElement('tr'), r2 = document.createElement('tr'), r3 = document.createElement('tr');
-  r1.className = 'sh-h1'; r2.className = 'sh-h2'; r3.className = 'sh-h3';
-  const fixed = (text, cls) => {
-    const th = document.createElement('th');
-    th.rowSpan = 3; th.className = cls; th.textContent = text;
-    r1.appendChild(th);
-  };
-  fixed('No.', 'sh-no'); fixed('項目', 'sh-name'); fixed('流れ', 'sh-flow');
-  groups.forEach((g, gi) => {
-    const th = document.createElement('th');
-    th.colSpan = g.cols.length * span;
-    th.className = 'sh-pn' + (gi ? ' sh-gap' : '');
-    th.dataset.pn = g.pn;
-    th.innerHTML = '<b></b><span></span>';
-    th.firstChild.textContent = g.pn;
-    th.lastChild.textContent = g.customer || '';
-    r1.appendChild(th);
-    g.cols.forEach((c, ci) => {
-      const gap = gi && !ci ? ' sh-gap' : '';
-      const m = document.createElement('th');
-      m.colSpan = span;
-      m.className = 'sh-machine' + gap;
-      const pr = progressOf(c);
-      m.innerHTML = '<span class="sh-mname"></span><span class="sh-mprog"></span>';
-      m.firstChild.textContent = c.machine || '(機種なし)';
-      m.lastChild.textContent = `${pr.done}/${pr.total}`;
-      m.lastChild.dataset.col = `${c.project_number}__${c.machine}`;
-      m.title = `${g.pn} ${c.machine}　対象外を除く ${pr.total} 項目のうち ${pr.done} 項目が完了`;
-      r2.appendChild(m);
-      const a = document.createElement('th');
-      a.className = 'sh-sub sh-ds-h' + gap;
-      a.textContent = '予定日・状態';
-      r3.appendChild(a);
-      if (sheetMemo) {
-        const b = document.createElement('th');
-        b.className = 'sh-sub sh-memo-h';
-        const w = memoColWidth(c);
-        b.style.width = b.style.minWidth = b.style.maxWidth = w + 'px';
-        b.textContent = 'メモ';
-        r3.appendChild(b);
-      }
-    });
-  });
-  thead.appendChild(r1); thead.appendChild(r2); thead.appendChild(r3);
-  table.appendChild(thead);
-
-  const tbody = document.createElement('tbody');
-  const row = (no, name, flow, cls, cellFn) => {
-    const tr = document.createElement('tr');
-    tr.className = cls;
-    const a = document.createElement('td'); a.className = 'sh-no'; a.textContent = no;
-    const b = document.createElement('td'); b.className = 'sh-name'; b.textContent = name;
-    const c = document.createElement('td'); c.className = 'sh-flow'; c.textContent = flow;
-    tr.appendChild(a); tr.appendChild(b); tr.appendChild(c);
-    groups.forEach((g, gi) => g.cols.forEach((col, ci) => cellFn(tr, col, gi && !ci ? ' sh-gap' : '')));
-    tbody.appendChild(tr);
-  };
-  PROCESSES.forEach(proc => {
-    row(proc.no, proc.name, PROCESS_FLOW[proc.no] || '', 'dept-' + (PROCESS_DEPT[proc.no] || 'other'), (tr, col, gap) => {
-      tr.appendChild(sheetStatusCell(col, proc, gap));
-      if (sheetMemo) tr.appendChild(sheetMemoCell(col, proc.no));
-    });
-  });
-  // 機械ごとの「その他」（項目に当てはまらない話）
-  row('', 'その他', '', 'sh-other', (tr, col, gap) => {
-    const td = document.createElement('td');
-    td.className = 'sh-ds sh-other-label' + gap;
-    td.textContent = sheetMemo ? '項目以外のこと' : '';
-    tr.appendChild(td);
-    if (sheetMemo) tr.appendChild(sheetMemoCell(col, SHEET_OTHER_NO));
-  });
-  // 出荷日（全体工程表の「工場出荷」。表示だけ）
-  row('', '工場出荷', '', 'sh-ship', (tr, col, gap) => {
-    const td = document.createElement('td');
-    td.className = 'sh-ds' + gap;
-    td.colSpan = span;
-    td.textContent = fmtDate(shipDateOf(col)) || '─';
-    td.title = '全体工程表の「工場出荷」の日付';
-    tr.appendChild(td);
-  });
-  table.appendChild(tbody);
-  return table;
-}
-
-// 予定日・状態のマス
-function sheetStatusCell(col, proc, gap) {
-  const rec = statusMap[procKey(col, proc)] || {};
-  const status = rec.status || '';
-  const td = document.createElement('td');
-  const paint = r => { td.className = `sh-ds st-${getStatusClass(r.status || '')} ${dueClass(r)}${gap}`; };
-  paint(rec);
-  const date = rec.end_date || rec.start_date || '';
-  if (!canEdit) {
-    td.innerHTML = '<div class="sh-date"></div>';
-    td.firstChild.textContent = fmtDate(date) || '';
-    if (status) { // 状態が空のマスは何も出さない
-      const pill = document.createElement('span');
-      pill.className = 'st-pill';
-      pill.textContent = status;
-      td.appendChild(pill);
-    }
-    return td;
-  }
-  const di = document.createElement('input');
-  di.type = 'date';
-  di.className = 'sh-date-input';
-  di.value = date;
-  di.title = '予定日';
-  const markEmpty = () => di.classList.toggle('empty', !di.value); // 空の欄の「年/月/日」は薄く
-  markEmpty();
-  di.addEventListener('input', markEmpty);
-  const sel = document.createElement('select');
-  sel.className = 'tl-select st-pill';
-  ['', ...STATUS_LIST].forEach(v => {
-    const o = document.createElement('option');
-    o.value = v; o.textContent = v || '─';
-    sel.appendChild(o);
-  });
-  sel.value = status;
-  const save = async patch => {
-    di.disabled = sel.disabled = true;
-    const ok = await saveProcessRec(col, proc, patch);
-    di.disabled = sel.disabled = false;
-    if (!ok) return;
-    paint(statusMap[procKey(col, proc)] || {});
-    afterSheetStatusSaved(col);
-  };
-  di.addEventListener('change', () => save({ start_date: di.value || null, end_date: di.value || null }));
-  sel.addEventListener('change', () => save({ status: sel.value || null }));
-  td.appendChild(di); td.appendChild(sel);
-  return td;
-}
-
-// 状態を変えたら、機械の完了数・ガントの「タスク」欄・上部の数をそろえる
-function afterSheetStatusSaved(col) {
+function machineRow(col, opens) {
+  const pn = col.project_number, machine = col.machine;
+  const row = el('div', 'v2-row' + (sheetSel && sheetSel.pn === pn && sheetSel.machine === machine ? ' sel-row' : ''));
   const pr = progressOf(col);
-  document.querySelectorAll('.sh-mprog').forEach(el => {
-    if (el.dataset.col === `${col.project_number}__${col.machine}`) el.textContent = `${pr.done}/${pr.total}`;
-  });
-  updateGanttProgress(col);
-  renderTaskPanel();
-}
+  const m = el('button', 'v2-mcell');
+  m.type = 'button';
+  m.title = `${pn} ${machine}　対象外を除く ${pr.total} 項目のうち ${pr.done} 項目が完了\n押すと「その他のメモ」を開きます`;
+  m.innerHTML = '<div class="v2-mtop"><b class="v2-mname"></b><span class="v2-mprog"></span></div><div class="v2-bar"><i></i></div>';
+  m.querySelector('.v2-mname').textContent = machine || '(機種なし)';
+  m.querySelector('.v2-mprog').textContent = `${pr.done}/${pr.total}`;
+  m.querySelector('.v2-bar i').style.width = (pr.total ? Math.round(pr.done / pr.total * 100) : 0) + '%';
+  if (memoOf(pn, machine, SHEET_OTHER_NO)) m.appendChild(el('span', 'v2-dot'));
+  if (sheetSel && sheetSel.pn === pn && sheetSel.machine === machine && sheetSel.no === SHEET_OTHER_NO) m.classList.add('sel');
+  m.addEventListener('click', () => selectCell(pn, machine, SHEET_OTHER_NO));
+  row.appendChild(m);
 
-// メモのマス（文字だけ。入力欄から離れたら今の内容として保存する。議事録には「議事録を作成」を押したときに入る）
-// メモの列の幅（px）: その機械のメモで一番長い行の見た目の長さに合わせる（最小 SHEET_MEMO_MIN、最大 SHEET_MEMO_MAX。長い行は折り返す）
-const SHEET_MEMO_MIN = 120, SHEET_MEMO_MAX = 420;
-function textWidth(line) {
-  let w = 0;
-  for (const ch of line) w += ch.charCodeAt(0) > 0xff ? 12 : 7; // 12px の文字で全角 12・半角 7 くらい
-  return w;
-}
-function memoColWidth(col) {
-  let max = 0;
-  [...PROCESSES.map(p => p.no), SHEET_OTHER_NO].forEach(no => {
-    String(itemMemos[noteKey(col.project_number, col.machine, no)] || '').split('\n').forEach(l => { max = Math.max(max, textWidth(l)); });
-  });
-  return Math.max(SHEET_MEMO_MIN, Math.min(SHEET_MEMO_MAX, max + 24));
-}
-
-// 入力欄の高さを中身に合わせる（行の高さも一緒に伸びる）
-function fitMemoHeight(ta) {
-  ta.style.height = 'auto';
-  ta.style.height = (ta.scrollHeight + 2) + 'px';
-}
-
-function sheetMemoCell(col, no) {
-  const td = document.createElement('td');
-  td.className = 'sh-memo';
-  const w = memoColWidth(col);
-  td.style.width = td.style.minWidth = td.style.maxWidth = w + 'px';
-  const key = noteKey(col.project_number, col.machine, no);
-  const body = itemMemos[key] || '';
-  if (!canEdit) {
-    const v = document.createElement('div');
-    v.className = 'sh-memo-view';
-    v.textContent = body;
-    td.appendChild(v);
-    return td;
-  }
-  const ta = document.createElement('textarea');
-  ta.className = 'sh-memo-input';
-  ta.value = body;
-  ta.rows = 1;
-  ta.addEventListener('input', () => { fitMemoHeight(ta); ta.classList.toggle('dirty', ta.value !== (itemMemos[key] || '')); });
-  ta.addEventListener('blur', () => {
-    if (ta.value === (itemMemos[key] || '')) return;
-    const p = saveItemMemo(col, no, ta.value).then(ok => { if (ok) ta.classList.remove('dirty'); });
-    pendingMemoSaves.add(p);
-    p.finally(() => pendingMemoSaves.delete(p));
-  });
-  td.appendChild(ta);
-  return td;
-}
-
-// 入力中のメモを保存し終わるまで待つ（議事録を作る前・表を描き直す前）
-const pendingMemoSaves = new Set();
-async function flushSheetMemos() {
-  if (document.activeElement && document.activeElement.classList.contains('sh-memo-input')) document.activeElement.blur();
-  await Promise.all([...pendingMemoSaves]);
-}
-
-async function saveItemMemo(col, no, text) {
-  const body = String(text || '').replace(/\s+$/, '');
-  const key = noteKey(col.project_number, col.machine, no);
-  setSheetSaveState('saving');
-  try {
-    let res;
-    if (body) {
-      res = await sb.from('denki_item_memos').upsert(
-        { project_number: col.project_number, machine: col.machine, process_no: no, body, updated_at: new Date().toISOString(), updated_by: await currentEmail() },
-        { onConflict: 'project_number,machine,process_no' }).select('process_no');
+  SHEET_GROUPS.forEach((g, i) => {
+    const box = el('div', 'v2-gcells' + (opens[i] ? '' : ' closed'));
+    if (opens[i]) {
+      for (let no = g.from; no <= g.to; no++) box.appendChild(sheetCell(col, no));
     } else {
-      res = await sb.from('denki_item_memos').delete()
-        .eq('project_number', col.project_number).eq('machine', col.machine).eq('process_no', no).select('process_no');
+      let d = 0, t = 0;
+      for (let no = g.from; no <= g.to; no++) { const s = recOf(pn, machine, no).status; if (s === '対象外') continue; t++; if (s === '完了') d++; }
+      const s = el('button', 'v2-gsum' + (t === d ? ' all' : ''), t === 0 ? '対象外' : t === d ? '✓ 完了' : `${d}/${t} 完了`);
+      s.type = 'button';
+      s.title = `${g.name}（押すと開く）`;
+      s.addEventListener('click', () => { groupOpenOverride[g.name] = true; renderSheet(); });
+      box.appendChild(s);
     }
+    row.appendChild(box);
+  });
+
+  const ship = el('div', 'v2-shipcell');
+  const sd = shipDateOf(col);
+  if (sd) {
+    const n = daysFromToday(sd);
+    const b = el('span', 'v2-shipbadge' + (n >= 0 && n <= 14 ? ' near' : ''), ymd(sd));
+    b.title = '全体工程表の「工場出荷」の日付';
+    ship.appendChild(b);
+    if (n >= 0 && n <= 14) ship.appendChild(el('span', 'v2-shipsub', n === 0 ? '今日' : `あと${n}日`));
+  } else ship.appendChild(el('span', 'v2-ship-none', '─'));
+  row.appendChild(ship);
+  return row;
+}
+
+function sheetCell(col, no) {
+  const pn = col.project_number, machine = col.machine;
+  const rec = recOf(pn, machine, no), st = rec.status || '';
+  const cls = ST_CLASS[st] || 'pending', due = dueOf(rec), miss = isMissingDate(rec);
+  const c = el('button', `v2-cell c-${cls}${due ? ' due-' + due : ''}${miss ? ' missing' : ''}`);
+  c.type = 'button';
+  c.textContent = st === '対象外' ? '' : miss ? '日付なし' : md(dateOf(rec));
+  if (memoOf(pn, machine, no)) c.appendChild(el('span', 'v2-dot'));
+  if (sheetSel && sheetSel.pn === pn && sheetSel.machine === machine && sheetSel.no === no) c.classList.add('sel');
+  c.title = `${no} ${procName(no)}\n${st || '状態なし'}　${dateOf(rec) ? ymd(dateOf(rec)) : '予定日なし'}${due === 'late' ? '（遅れ）' : due === 'soon' ? '（注意）' : ''}`;
+  c.addEventListener('click', () => selectCell(pn, machine, no));
+  return c;
+}
+
+// ─── 詳細表示 ─────────────────────────────────────────
+let detailHist = { key: null, rows: [] };
+
+async function selectCell(pn, machine, no) {
+  await flushDetailMemo();
+  if (sheetSel && sheetSel.pn === pn && sheetSel.machine === machine && sheetSel.no === no) { sheetSel = null; renderSheet(); return; }
+  sheetSel = { pn, machine, no };
+  detailHist = { key: noteKey(pn, machine, no), rows: null };
+  renderSheet();
+  refreshItem(pn, machine, no).then(() => { if (sheetSel && noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no) === noteKey(pn, machine, no)) renderSheet(); });
+  loadDetailHistory(pn, machine, no);
+}
+
+function closeDetail() { flushDetailMemo().then(() => { sheetSel = null; renderSheet(); }); }
+
+async function loadDetailHistory(pn, machine, no) {
+  const key = noteKey(pn, machine, no);
+  const { data, error } = await sb.from('denki_history').select('meeting_date, base, cur, changed')
+    .eq('project_number', pn).eq('machine', machine).eq('process_no', no).order('meeting_date', { ascending: false });
+  if (!sheetSel || noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no) !== key) return;
+  detailHist = { key, rows: error ? [] : data };
+  renderDetail(true);
+}
+
+// 選んだ項目だけ DB から読み直す（ほかの人の変更を見る・上書きを防ぐ）
+async function refreshItem(pn, machine, no) {
+  const m = q => q.eq('project_number', pn).eq('machine', machine).eq('process_no', no).maybeSingle();
+  const [s, i, me] = await Promise.all([
+    no ? m(sb.from('denki_process_status').select('status, start_date, end_date, updated_at')) : Promise.resolve({ data: null }),
+    m(sb.from('denki_item_info').select('ball, due_date, steps, updated_at')),
+    m(sb.from('denki_item_memos').select('body, updated_at')),
+  ]);
+  const key = noteKey(pn, machine, no);
+  if (no) { if (s.data) statusMap[`${pn}__${machine}__${no}`] = s.data; else delete statusMap[`${pn}__${machine}__${no}`]; }
+  if (i.data) itemInfo[key] = i.data; else delete itemInfo[key];
+  if (me.data) itemMemos[key] = me.data; else delete itemMemos[key];
+}
+
+function renderDetail(force) {
+  const box = document.getElementById('sheet-detail');
+  if (!sheetSel) { box.hidden = true; box.innerHTML = ''; return; }
+  // メモを入力中は描き直さない（入力が消えないように）
+  if (!force && box.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA') return;
+  if (force && box.contains(document.activeElement) && document.activeElement.tagName === 'TEXTAREA') { renderHistoryOnly(); return; }
+  box.hidden = false;
+  box.innerHTML = '';
+  const { pn, machine, no } = sheetSel;
+  const ro = !canEdit;
+
+  const head = el('div', 'dt-head');
+  head.appendChild(el('span', 'dt-sub', `${pn}　${machine}`));
+  const close = el('button', 'dt-close', '✕');
+  close.type = 'button'; close.title = '閉じる';
+  close.addEventListener('click', closeDetail);
+  head.appendChild(close);
+  box.appendChild(head);
+
+  const body = el('div', 'dt-body');
+  box.appendChild(body);
+
+  // 項目名と前後の項目
+  const ttl = el('div', 'dt-item');
+  const nm = el('div', 'dt-name');
+  if (no) nm.appendChild(el('span', 'dt-no', String(no)));
+  nm.appendChild(el('b', '', procName(no)));
+  ttl.appendChild(nm);
+  if (no && PROCESS_FLOW[no]) ttl.appendChild(el('span', 'dt-flow', PROCESS_FLOW[no]));
+  if (no) {
+    const nav = el('div', 'dt-nav');
+    const mk = (label, to) => {
+      const b = el('button', 'dt-navbtn', label);
+      b.type = 'button';
+      b.disabled = to < 1 || to > PROCESSES.length;
+      b.addEventListener('click', () => selectCell(pn, machine, to));
+      nav.appendChild(b);
+    };
+    mk('‹ 前の項目', no - 1); mk('次の項目 ›', no + 1);
+    ttl.appendChild(nav);
+  }
+  body.appendChild(ttl);
+
+  if (no) {
+    const rec = recOf(pn, machine, no), date = dateOf(rec), due = dueOf(rec);
+    // 予定日
+    const sec = section(body, '予定日');
+    const row = el('div', 'dt-daterow');
+    const di = el('input', 'dt-date');
+    di.type = 'date'; di.value = date; di.disabled = ro;
+    di.addEventListener('click', () => { try { di.showPicker(); } catch (_) { /* 対応していないブラウザ */ } });
+    di.addEventListener('change', () => saveStatus({ start_date: di.value || null, end_date: di.value || null }));
+    row.appendChild(di);
+    if (due && date) {
+      const n = daysFromToday(date);
+      row.appendChild(el('span', 'dt-due ' + due, due === 'late' ? `${-n}日遅れ` : n === 0 ? '今日まで' : `あと${n}日`));
+    }
+    sec.appendChild(row);
+    if (isMissingDate(rec)) sec.appendChild(el('div', 'dt-warn', '予定日を入れてください（対象外以外は必須です）'));
+
+    // 状態
+    const sec2 = section(body, '状態');
+    const grid = el('div', 'dt-status');
+    STATUS_LIST.forEach(s => {
+      const b = el('button', `dt-st c-${ST_CLASS[s]}${rec.status === s ? ' on' : ''}`, s);
+      b.type = 'button'; b.disabled = ro;
+      b.addEventListener('click', () => {
+        const next = rec.status === s ? null : s;
+        if (next && next !== '対象外' && !date) alert('予定日が入っていません。対象外以外は予定日を必ず入れてください。');
+        saveStatus({ status: next });
+      });
+      grid.appendChild(b);
+    });
+    sec2.appendChild(grid);
+  }
+
+  // 今の状況
+  const now = el('div', 'dt-now');
+  const nh = el('div', 'dt-nowhead');
+  nh.appendChild(el('b', '', no ? '今の状況' : 'その他のメモ（項目以外のこと）'));
+  if (no && stepDefs[no]) nh.appendChild(el('span', 'dt-steptext', stepText(pn, machine, no) === 'すべて完了' ? '✓ すべて完了' : stepText(pn, machine, no)));
+  now.appendChild(nh);
+
+  if (no && stepDefs[no]) {
+    const checks = stepChecks(pn, machine, no);
+    const list = el('div', 'dt-steps');
+    const next = checks.indexOf(false);
+    stepDefs[no].forEach((label, i) => {
+      const b = el('button', 'dt-step' + (checks[i] ? ' on' : '') + (i === next ? ' next' : ''));
+      b.type = 'button'; b.disabled = ro;
+      b.innerHTML = `<span class="dt-check">${checks[i] ? '✓' : ''}</span><span></span>`;
+      b.lastChild.textContent = label;
+      b.addEventListener('click', () => { const c = [...checks]; c[i] = !c[i]; saveInfo({ steps: c }); });
+      list.appendChild(b);
+    });
+    now.appendChild(list);
+  }
+
+  if (no) {
+    const inf = infoOf(pn, machine, no);
+    const br = el('div', 'dt-ballrow');
+    br.appendChild(el('span', 'dt-label', '対応中'));
+    const rows = el('div', 'dt-balls');
+    BALL_ROWS.forEach(r => {
+      const line = el('div', 'dt-ballline');
+      r.forEach(v => {
+        const b = el('button', 'dt-ball' + (inf.ball === v ? ' on' : ''), v);
+        b.type = 'button'; b.disabled = ro;
+        b.addEventListener('click', () => saveInfo({ ball: inf.ball === v ? null : v }));
+        line.appendChild(b);
+      });
+      rows.appendChild(line);
+    });
+    br.appendChild(rows);
+    now.appendChild(br);
+
+    const dr = el('div', 'dt-ballrow');
+    dr.appendChild(el('span', 'dt-label', '期限'));
+    const dd = el('input', 'dt-date');
+    dd.type = 'date'; dd.value = inf.due_date || ''; dd.disabled = ro;
+    dd.addEventListener('click', () => { try { dd.showPicker(); } catch (_) { /* 対応していないブラウザ */ } });
+    dd.addEventListener('change', () => saveInfo({ due_date: dd.value || null }));
+    dr.appendChild(dd);
+    now.appendChild(dr);
+  }
+
+  const mw = el('div', 'dt-memo');
+  if (no) mw.appendChild(el('span', 'dt-label', '自由メモ'));
+  const ta = el('textarea', 'dt-memo-input');
+  ta.value = memoOf(pn, machine, no);
+  ta.readOnly = ro;
+  ta.dataset.key = noteKey(pn, machine, no);
+  ta.addEventListener('blur', () => saveMemoFrom(ta));
+  mw.appendChild(ta);
+  now.appendChild(mw);
+  now.appendChild(el('div', 'dt-note', ro ? '見るだけの権限です（編集はできません）'
+    : meetingActive() ? `会議中：変更は ${md(meetingToday.meeting_date)} の議事録に自動で記録されます`
+    : '会議中ではないので、変更は議事録に記録されません'));
+  body.appendChild(now);
+
+  const hs = el('div', 'dt-hist');
+  hs.id = 'dt-hist';
+  body.appendChild(hs);
+  renderHistoryOnly();
+}
+
+function section(parent, label) {
+  const s = el('div', 'dt-sec');
+  s.appendChild(el('span', 'dt-label', label));
+  parent.appendChild(s);
+  return s;
+}
+
+function renderHistoryOnly() {
+  const hs = document.getElementById('dt-hist');
+  if (!hs) return;
+  hs.innerHTML = '';
+  hs.appendChild(el('b', 'dt-hist-title', '会議ごとの履歴'));
+  const rows = detailHist.rows;
+  if (rows === null) { hs.appendChild(el('span', 'dt-muted', '読み込み中…')); return; }
+  if (!rows.length) { hs.appendChild(el('span', 'dt-muted', 'まだ記録はありません')); return; }
+  rows.forEach(r => {
+    const it = el('div', 'dt-hrow');
+    it.appendChild(el('b', 'dt-hdate', fmtMeetingDate(r.meeting_date)));
+    (r.changed || []).forEach(f => it.appendChild(el('span', 'dt-hline', `${SNAP_LABELS[f]}：${histValue(f, r.base[f])} → ${histValue(f, r.cur[f])}`)));
+    hs.appendChild(it);
+  });
+}
+function histValue(f, v) {
+  if (!v) return '（なし）';
+  if (f === 'sched' || f === 'due') return md(v);
+  return v;
+}
+
+// ─── 保存 ─────────────────────────────────────────────
+let savingCount = 0;
+function isSaving() { return savingCount > 0; }
+function setSaveStatus(state) {
+  const e = document.getElementById('save-status');
+  if (!e) return;
+  const d = new Date();
+  e.textContent = { saving: '… 保存中', saved: `✓ 保存しました ${d.getHours()}:${String(d.getMinutes()).padStart(2, '0')}`, error: '× 保存できませんでした' }[state] || '';
+  e.dataset.state = state;
+}
+
+function sameTime(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return new Date(a).getTime() === new Date(b).getTime();
+}
+
+// 保存の前に、ほかの人が先に更新していないか確かめる
+async function guardedWrite(table, match, row, cachedAt, del) {
+  let q = sb.from(table).select('updated_at');
+  Object.entries(match).forEach(([k, v]) => { q = q.eq(k, v); });
+  const cur = await q.maybeSingle();
+  if (cur.error) throw cur.error;
+  if (cur.data && !sameTime(cur.data.updated_at, cachedAt)) {
+    const e = new Error('conflict'); e.conflict = true; throw e;
+  }
+  if (del) {
+    if (!cur.data) return null;
+    let d = sb.from(table).delete();
+    Object.entries(match).forEach(([k, v]) => { d = d.eq(k, v); });
+    const res = await d.select('process_no');
     if (res.error) throw res.error;
-    if (body && !res.data.length) throw new Error('権限がないか、ログインが切れています');
-    if (body) itemMemos[key] = body; else delete itemMemos[key];
-    setSheetSaveState('saved');
-    return true;
-  } catch (e) {
-    setSheetSaveState('error');
-    alert(`メモを保存できませんでした。入力した内容は画面に残っています。\n${e.message || e}\n\nログインが切れている場合は、入力内容を控えてからページを再読み込みしてください。`);
-    return false;
+    if (!res.data.length) throw new Error('権限がないか、ログインが切れています');
+    return null;
   }
+  const res = await sb.from(table).upsert(
+    { ...match, ...row, updated_at: new Date().toISOString(), updated_by: await currentEmail() },
+    { onConflict: Object.keys(match).join(',') }).select('updated_at');
+  if (res.error) throw res.error;
+  if (!res.data.length) throw new Error('権限がないか、ログインが切れています');
+  return res.data[0].updated_at;
 }
 
-let sheetSavedAt = null;
-function setSheetSaveState(state) {
-  if (state === 'saved') sheetSavedAt = new Date();
-  const el = document.getElementById('sheet-save-status');
-  if (!el) return;
-  const hm = sheetSavedAt ? `${sheetSavedAt.getHours()}:${String(sheetSavedAt.getMinutes()).padStart(2, '0')}` : '';
-  el.textContent = { saving: '… 保存中', saved: `✓ メモを保存しました ${hm}`, error: '× 保存できませんでした' }[state] || '';
-  el.dataset.state = state;
-}
-
-// 予定日・状態を保存する（電気工程表だけに保存。全体工程表には書かない）
-async function saveProcessRec(col, proc, patch) {
-  if (!canEdit) return false;
-  const key = procKey(col, proc);
-  const rec = { status: null, start_date: null, end_date: null, tantousha: null, memo: null, ...(statusMap[key] || {}), ...patch };
+async function runSave(fn) {
+  if (!canEdit || !sheetSel) return;
+  const { pn, machine, no } = sheetSel;
+  const before = snapOf(pn, machine, no);
+  savingCount++;
+  setSaveStatus('saving');
   try {
-    const isEmpty = !rec.status && !rec.start_date && !rec.end_date && !rec.tantousha && !rec.memo;
-    if (isEmpty) {
-      if (statusMap[key]) {
-        const { data, error } = await sb.from('denki_process_status').delete()
-          .eq('project_number', col.project_number).eq('machine', col.machine).eq('process_no', proc.no)
-          .select('process_no');
-        if (error) throw error;
-        if (!data.length) throw new Error('削除できませんでした（権限がないか、ログインが切れています）');
-        delete statusMap[key];
-      }
-    } else {
-      const { data, error } = await sb.from('denki_process_status').upsert(
-        { project_number: col.project_number, machine: col.machine, process_no: proc.no, ...rec },
-        { onConflict: 'project_number,machine,process_no' }).select('process_no');
-      if (error) throw error;
-      if (!data.length) throw new Error('保存できませんでした（権限がないか、ログインが切れています）');
-      statusMap[key] = rec;
-    }
-    return true;
+    await fn(pn, machine, no);
+    setSaveStatus('saved');
   } catch (e) {
-    console.warn('保存エラー:', e);
-    alert(`保存できませんでした。\n${e.message || e}\n\n画面を保存済みの内容に戻します。ログインが切れている場合は、ページを再読み込みしてください。`);
-    await refreshDisplay();
-    return false;
+    setSaveStatus('error');
+    if (e.conflict) alert('ほかの人が先にこの項目を更新していました。最新の内容を読み込みます。\n内容を確かめてから、もう一度入力してください。');
+    else alert(`保存できませんでした。\n${e.message || e}\n\nログインが切れている場合は、ページを再読み込みしてください。`);
+    await refreshItem(pn, machine, no);
+    savingCount--;
+    renderSheet();
+    return;
   }
+  await recordHistory(pn, machine, no, before);
+  savingCount--;
+  renderSheet();
 }
 
-// ─── 上の操作の行 ─────────────────────────────────────
-// 1行目: 議事録を作成（会議の日付）・前回の議事録・メモの保存の状態　2行目: 工番の絞り込み・メモの表示切り替え
-function renderSheetTools() {
-  const box = document.getElementById('sheet-tools');
-  if (!box.dataset.built) {
-    box.dataset.built = '1';
-    box.innerHTML = `
-      <div class="sheet-row">
-        <span id="sheet-make"></span>
-        <span class="dock-meta" id="sheet-meta"></span>
-        <span class="save-status" id="sheet-save-status"></span>
-      </div>
-      <div class="sheet-row">
-        <span class="f-title">工番</span>
-        <span class="chip-group" id="sheet-pns"></span>
-        <span class="sep"></span>
-        <button class="chip" id="sheet-memo-toggle"></button>
-      </div>`;
-    if (canEdit) document.getElementById('sheet-make').appendChild(createNewDateControls(false));
-    document.getElementById('sheet-memo-toggle').addEventListener('click', async () => {
-      await flushSheetMemos();
-      sheetMemo = !sheetMemo;
-      localStorage.setItem('denki_sheet_memo', sheetMemo ? '1' : '0');
-      renderSheet();
-    });
-  }
-  const last = minutesList[0];
-  document.getElementById('sheet-meta').textContent = last
-    ? `前回の議事録 ${fmtMeetingDate(last.meeting_date)}` : '議事録はまだありません';
-
-  // 工番の絞り込み
-  const pnBox = document.getElementById('sheet-pns');
-  pnBox.innerHTML = '';
-  const chip = (label, on, title, onClick) => {
-    const b = document.createElement('button');
-    b.className = 'chip' + (on ? ' on' : '');
-    b.textContent = label;
-    b.title = title;
-    b.addEventListener('click', async () => { await flushSheetMemos(); onClick(); saveSheetPns(); renderSheet(); });
-    pnBox.appendChild(b);
-  };
-  chip('すべて', !sheetPns, 'すべての工番を表示', () => { sheetPns = null; });
-  [...new Map(currentProjects.map(p => [p.project_number, p])).values()].forEach(p => {
-    chip(p.project_number, !!sheetPns && sheetPns.has(p.project_number), `${p.project_number} ${p.customer_name || ''}`, () => {
-      if (!sheetPns) sheetPns = new Set();
-      if (sheetPns.has(p.project_number)) sheetPns.delete(p.project_number); else sheetPns.add(p.project_number);
-      if (!sheetPns.size) sheetPns = null;
-    });
+function saveStatus(patch) {
+  return runSave(async (pn, machine, no) => {
+    const key = `${pn}__${machine}__${no}`;
+    const rec = { status: null, start_date: null, end_date: null, ...(statusMap[key] || {}), ...patch };
+    const at = await guardedWrite('denki_process_status', { project_number: pn, machine, process_no: no },
+      { status: rec.status || null, start_date: rec.start_date || null, end_date: rec.end_date || null }, (statusMap[key] || {}).updated_at);
+    statusMap[key] = { ...rec, updated_at: at };
   });
-  const mt = document.getElementById('sheet-memo-toggle');
-  mt.textContent = sheetMemo ? 'メモを隠す' : 'メモを表示';
-  mt.title = sheetMemo ? 'メモの列を隠して、状態だけを一覧にします' : 'メモの列を表示します';
 }
 
-function saveSheetPns() {
-  // 工番管理で外した工番が残っていても、表示のときに無視されるだけ
-  try { localStorage.setItem('denki_sheet_pns', JSON.stringify(sheetPns ? [...sheetPns] : [])); } catch (_) { /* 覚えられなくても表示はする */ }
+function saveInfo(patch) {
+  return runSave(async (pn, machine, no) => {
+    const key = noteKey(pn, machine, no);
+    const cur = { ball: null, due_date: null, steps: null, ...(itemInfo[key] || {}), ...patch };
+    const at = await guardedWrite('denki_item_info', { project_number: pn, machine, process_no: no },
+      { ball: cur.ball || null, due_date: cur.due_date || null, steps: cur.steps || null }, (itemInfo[key] || {}).updated_at);
+    itemInfo[key] = { ...cur, updated_at: at };
+  });
 }
 
-// 左メニューの工番を押したとき、表の工番の列まで横に動かす
-function scrollSheetToProject(pn) {
-  if (sheetPns && !sheetPns.has(pn)) { sheetPns.add(pn); saveSheetPns(); renderSheet().then(() => scrollSheetToProject(pn)); return; }
-  const wrap = document.getElementById('sheet-wrap');
-  const th = wrap.querySelector(`th.sh-pn[data-pn="${CSS.escape(pn)}"]`);
-  const fixed = wrap.querySelector('thead th.sh-flow');
-  if (!th || !fixed) return;
-  const left = fixed.getBoundingClientRect().right - wrap.getBoundingClientRect().left;
-  wrap.scrollTo({ left: wrap.scrollLeft + th.getBoundingClientRect().left - wrap.getBoundingClientRect().left - left, behavior: 'smooth' });
+let memoSaving = null;
+function saveMemoFrom(ta) {
+  if (!canEdit || !sheetSel || ta.dataset.key !== noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no)) return Promise.resolve();
+  const body = ta.value.replace(/\s+$/, '');
+  if (body === memoOf(sheetSel.pn, sheetSel.machine, sheetSel.no)) return Promise.resolve();
+  memoSaving = runSave(async (pn, machine, no) => {
+    const key = noteKey(pn, machine, no);
+    const at = await guardedWrite('denki_item_memos', { project_number: pn, machine, process_no: no },
+      { body }, (itemMemos[key] || {}).updated_at, !body);
+    if (body) itemMemos[key] = { body, updated_at: at }; else delete itemMemos[key];
+  }).finally(() => { memoSaving = null; });
+  return memoSaving;
+}
+// 別のマスへ移る・会議を終える前に、入力中のメモを保存する
+async function flushDetailMemo() {
+  const ta = document.querySelector('#sheet-detail .dt-memo-input');
+  if (ta && document.activeElement === ta) ta.blur();
+  if (memoSaving) await memoSaving;
+}
+
+// ─── 会議中の自動記録 ─────────────────────────────────
+// 会議中に最初に変えたときの内容（base）と今の内容（cur）を比べ、違う欄だけを記録する。
+// 元に戻して同じになったら、その項目の記録を消す
+async function recordHistory(pn, machine, no, before) {
+  if (!meetingActive()) return;
+  const d = meetingToday.meeting_date, key = noteKey(pn, machine, no);
+  const match = { meeting_date: d, project_number: pn, machine, process_no: no };
+  try {
+    const ex = await sb.from('denki_history').select('*').match(match).maybeSingle();
+    if (ex.error) throw ex.error;
+    const base = ex.data ? ex.data.base : before;
+    const cur = snapOf(pn, machine, no);
+    const changed = SNAP_FIELDS.filter(f => (cur[f] || '') !== (base[f] || ''));
+    if (!changed.length) {
+      if (ex.data) { const r = await sb.from('denki_history').delete().match(match); if (r.error) throw r.error; }
+      delete todayHistory[key];
+    } else {
+      const row = { ...match, base, cur, changed, updated_at: new Date().toISOString(), updated_by: await currentEmail() };
+      const r = await sb.from('denki_history').upsert(row, { onConflict: 'meeting_date,project_number,machine,process_no' });
+      if (r.error) throw r.error;
+      todayHistory[key] = row;
+    }
+  } catch (e) {
+    alert(`変更は保存しましたが、議事録への記録ができませんでした。\n${e.message || e}`);
+  }
+  if (sheetSel && noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no) === key) loadDetailHistory(pn, machine, no);
 }
