@@ -114,7 +114,13 @@ function renderSheet() {
   const grid = el('div', 'v2-grid');
 
   const head = el('div', 'v2-head');
-  head.appendChild(el('div', 'v2-corner'));
+  const corner = el('div', 'v2-corner');
+  const gb = el('button', 'v2-global-btn' + (sheetSel && sheetSel.pn === GLOBAL_PN ? ' on' : ''), '全体の決定事項');
+  gb.type = 'button'; gb.id = 'btn-global';
+  gb.title = '工番によらない、全体の決定事項を右に開きます';
+  gb.addEventListener('click', () => selectCell(GLOBAL_PN, '', 0));
+  corner.appendChild(gb);
+  head.appendChild(corner);
   SHEET_GROUPS.forEach((g, i) => {
     const gh = el('div', 'v2-gh' + (opens[i] ? '' : ' closed'));
     const t = el('button', 'v2-gtitle');
@@ -162,7 +168,6 @@ function renderSheet() {
   wrap.appendChild(grid);
   wrap.scrollLeft = scroll.l; wrap.scrollTop = scroll.t;
   renderDetail();
-  renderGlobalBtn();
 }
 
 function machineRow(col, opens) {
@@ -569,12 +574,3 @@ async function recordHistory(pn, machine, no, before) {
   }
   if (sheetSel && noteKey(sheetSel.pn, sheetSel.machine, sheetSel.no) === key) loadDetailHistory(pn, machine, no);
 }
-
-// ─── 全体の決定事項 ─────────────────────────────────────
-// 上のバーのボタンで、右の詳細欄に「全体の決定事項」を開く（もう一度押すと閉じる）
-function renderGlobalBtn() {
-  const b = document.getElementById('btn-global');
-  if (!b) return;
-  b.classList.toggle('on', !!(sheetSel && sheetSel.pn === GLOBAL_PN));
-}
-document.getElementById('btn-global').addEventListener('click', () => selectCell(GLOBAL_PN, '', 0));
