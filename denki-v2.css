@@ -401,3 +401,21 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 .am-unitbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
 .am-unitbtns .am-pick { width: 100%; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; }
 .am-units .am-unitrow + .am-unitrow { padding-top: 8px; border-top: 1px solid #e3e6ea; }
+
+/* 標準日程の試算（schedule.js） */
+.pl-info { flex-shrink: 0; display: flex; flex-direction: column; gap: 8px; padding: 12px 22px; border-bottom: 1px solid #e3e6ea; }
+.pl-base { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.pl-base b { font-size: 17px; }
+.pl-wrap { flex: 1; min-height: 0; overflow: auto; }
+.pl-table { width: 100%; border-collapse: collapse; font-size: 14px; }
+.pl-table th { position: sticky; top: 0; background: #f5f6f8; color: #3f4751; font-size: 13px; text-align: left; padding: 8px 10px; border-bottom: 1px solid #d5d9de; white-space: nowrap; }
+.pl-table td { padding: 7px 10px; border-bottom: 1px solid #eef0f2; vertical-align: middle; }
+.pl-table td.no { color: #7c858f; text-align: right; width: 28px; }
+.pl-table td.d { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.pl-table td.std { font-weight: 700; }
+.pl-table td.st, .pl-table td.diff { white-space: nowrap; }
+.pl-table td.diff.chg { color: #962d2a; font-weight: 700; }
+.pl-table td.diff.new { color: #1f4a8a; font-weight: 700; }
+.pl-table td.rule { font-size: 12px; color: #5b636c; }
+.pl-table tr.skip td { color: #9aa1a9; }
+.pl-table tr.skip td.std { font-weight: 400; }

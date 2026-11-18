@@ -93,7 +93,7 @@ async function loadData() {
     .sort((a, b) => a.project_number.localeCompare(b.project_number) || a.sort_order - b.sort_order);
   currentProjects = allColumns.filter(c => !denkiCompleted.has(c.project_number));
 
-  ganttTasks = {}; ganttOther = {}; statusMap = {}; itemMemos = {}; itemInfo = {};
+  ganttTasks = {}; colTasks = {}; ganttOther = {}; statusMap = {}; itemMemos = {}; itemInfo = {};
   if (currentProjects.length === 0) return;
 
   const projectNumbers = [...new Set(currentProjects.map(p => p.project_number))];
@@ -116,7 +116,13 @@ async function loadData() {
   currentProjects.forEach(p => { p.customer_name = customerOf[p.project_number] || ''; });
 
   // 工場出荷の日付を拾うため、電気関係のタスクを列へ振り分ける（今までと同じ）
-  currentProjects.forEach(proj => { ganttTasks[`${proj.project_number}__${proj.machine}`] = []; });
+  currentProjects.forEach(proj => { ganttTasks[`${proj.project_number}__${proj.machine}`] = []; colTasks[`${proj.project_number}__${proj.machine}`] = []; });
+  // 標準日程（schedule.js）用に、電気関係に限らず列ごとのタスクを持っておく
+  tasks.filter(t => !t.is_archived).forEach(t => {
+    const pn = String(t.project_number);
+    currentProjects.filter(p => p.project_number === pn && machineMatches(p.link_machine, t.machine) && unitMatches(p.unit, t.unit))
+      .forEach(p => colTasks[`${pn}__${p.machine}`].push(t));
+  });
   tasks
     .filter(t => !t.is_archived && isElectricalTask(t))
     .forEach(t => {
