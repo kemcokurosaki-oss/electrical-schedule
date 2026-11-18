@@ -7,6 +7,7 @@ let mgSel = null;              // 左の一覧で選んでいる工番
 let mgNewOpen = false;         // 「工番を追加」を開いているか
 let mgNewPn = null;            // 「工番を追加」で選んだ工番
 let mgNewQ = '';               // 工番の絞り込み
+let mgUnitsOpen = false;       // 「ユニットで追加する」を開いているか（ふだんは機械名だけ出す）
 let mgNewSel = new Set();      // 「工番を追加」で選んでいる機械・ユニット（キー: 機械\tユニット）
 
 function el(tag, cls, text) {
@@ -24,7 +25,7 @@ function amBtn(cls, text, onClick) {
 }
 
 function mgReset() {
-  mgView = null; mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
+  mgView = null; mgUnitsOpen = false; mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
 }
 
 async function renderManageView(view) {
@@ -82,32 +83,20 @@ async function loadManageCandidates() {
 const mgKey = x => `${x.m}\t${x.u}`;
 const colMachineKey = (m, u) => m + u;   // 列のキー（例: FS + BT1 → FSBT1）
 
-// 工番の候補を「機械全体 → ユニット」の順に並べる
+// 工番の候補（機械名だけ）
 function candidateList(pn) {
   const cand = manageCandidates && manageCandidates.get(pn);
   if (!cand) return [];
-  const list = [];
-  [...cand.machines.keys()].sort().forEach(m => {
-    list.push({ m, u: '' });
-    [...cand.machines.get(m)].sort().forEach(u => list.push({ m, u }));
-  });
-  return list;
+  return [...cand.machines.keys()].sort().map(m => ({ m, u: '' }));
 }
 
-// 機械ごとにまとめる（ユニットがある機械は「全体」とユニットを並べる）
-function groupByMachine(list, pn) {
+// ユニットの候補（「ユニットで追加する」を開いたときだけ出す）
+function unitList(pn) {
   const cand = manageCandidates && manageCandidates.get(pn);
-  const groups = [];
-  list.forEach(x => {
-    let g = groups.find(y => y.m === x.m);
-    if (!g) groups.push(g = { m: x.m, items: [], hasUnits: !!(cand && cand.machines.get(x.m) && cand.machines.get(x.m).size) });
-    g.items.push(x);
-  });
-  return groups;
-}
-
-function pickLabel(x, hasUnits) {
-  return x.u ? x.u : (hasUnits ? `${x.m}（全体）` : x.m);
+  if (!cand) return [];
+  const list = [];
+  [...cand.machines.keys()].sort().forEach(m => [...cand.machines.get(m)].sort().forEach(u => list.push({ m, u })));
+  return list;
 }
 
 function columnsByProject() {
@@ -124,13 +113,25 @@ function machineLabel(m) {
   return m || '(機種なし)';
 }
 
-function renderGroups(box, pn, list, makeButton) {
-  groupByMachine(list, pn).forEach(g => {
+// 機械のボタンを並べ、その下に「ユニットで追加する」（押すと機械ごとのユニットが開く）
+function renderPicks(box, list, units, makeButton) {
+  if (list.length) {
+    const wrap = el('div', 'am-group');
+    list.forEach(x => wrap.appendChild(makeButton(x, x.m)));
+    box.appendChild(wrap);
+  }
+  if (!units.length) return;
+  box.appendChild(amBtn('am-link am-unitlink', mgUnitsOpen ? 'ユニットで追加する ▾' : 'ユニットで追加する ▸',
+    () => { mgUnitsOpen = !mgUnitsOpen; renderManage(); }));
+  if (!mgUnitsOpen) return;
+  const ub = el('div', 'am-units');
+  [...new Set(units.map(x => x.m))].forEach(m => {
     const row = el('div', 'am-group');
-    row.appendChild(el('span', '', g.m));
-    g.items.forEach(x => row.appendChild(makeButton(x, pickLabel(x, g.hasUnits))));
-    box.appendChild(row);
+    row.appendChild(el('span', 'am-unitm', m));
+    units.filter(x => x.m === m).forEach(x => row.appendChild(makeButton(x, x.u)));
+    ub.appendChild(row);
   });
+  box.appendChild(ub);
 }
 
 // ─── 画面 ─────────────────────────────────────────────
@@ -206,10 +207,11 @@ function renderJobEditor(pn, cols) {
   body.appendChild(col);
 
   const pick = el('div', 'am-preview');
-  pick.appendChild(el('span', 'am-label', '追加できる機械・ユニット（全体工程表から）'));
+  pick.appendChild(el('span', 'am-label', '追加できる機械（全体工程表から）'));
   const rest = candidateList(pn).filter(x => !isShown(pn, x));
+  const restUnits = unitList(pn).filter(x => !isShown(pn, x));
   if (!rest.length) pick.appendChild(el('span', 'am-hint', '追加できる機械はありません'));
-  renderGroups(pick, pn, rest, (x, label) => amBtn('am-pick add', '＋ ' + label, () => addColumn(pn, x.m, x.u)));
+  renderPicks(pick, rest, restUnits, (x, label) => amBtn('am-pick add', '＋ ' + label, () => addColumn(pn, x.m, x.u)));
   body.appendChild(pick);
 
   card.appendChild(body);
@@ -296,15 +298,16 @@ function renderNewCard() {
     body.appendChild(chosen);
     if (list.length) {
       const rh = el('div', 'am-rowhead');
-      rh.appendChild(el('b', '', '表示する機械・ユニット'));
+      rh.appendChild(el('b', '', '表示する機械'));
       rh.appendChild(el('span', '', '全体工程表から拾っています。押して選択'));
-      rh.appendChild(amBtn('am-btn sm', mgNewSel.size === list.length ? 'すべて解除' : 'すべて選択', () => {
-        mgNewSel = mgNewSel.size === list.length ? new Set() : new Set(list.map(mgKey));
+      const allOn = list.every(x => mgNewSel.has(mgKey(x)));
+      rh.appendChild(amBtn('am-btn sm', allOn ? 'すべて解除' : 'すべて選択', () => {
+        list.forEach(x => { if (allOn) mgNewSel.delete(mgKey(x)); else mgNewSel.add(mgKey(x)); });
         renderManage();
       }));
       body.appendChild(rh);
       const groups = el('div', 'am-edcol');
-      renderGroups(groups, mgNewPn, list, (x, label) => {
+      renderPicks(groups, list, unitList(mgNewPn), (x, label) => {
         const on = mgNewSel.has(mgKey(x));
         return amBtn('am-pick' + (on ? ' on' : ''), (on ? '✓ ' : '') + label, () => {
           if (on) mgNewSel.delete(mgKey(x)); else mgNewSel.add(mgKey(x));
@@ -329,7 +332,7 @@ function renderNewCard() {
 
 async function addNewProject() {
   const pn = mgNewPn;
-  const picks = candidateList(pn).filter(x => mgNewSel.has(mgKey(x)));
+  const picks = [...candidateList(pn), ...unitList(pn)].filter(x => mgNewSel.has(mgKey(x)));
   if (!pn || picks.length === 0) return;
   mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set(); mgSel = pn;
   const rows = picks.map((x, i) => columnRow(pn, x.m, x.u, (i + 1) * 10));

@@ -277,7 +277,7 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 
 /* 工番・機械の登録 */
 .am-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
-.am-group > span { width: 56px; font-size: 13px; font-weight: 700; color: #5b636c; }
+
 .am-pick { height: 40px; min-width: 66px; padding: 0 14px; border: 1px solid #c9ced4; border-radius: 7px; background: #fff; color: #2a2f35; font-weight: 700; font-size: 14px;
   font-family: inherit; cursor: pointer; white-space: nowrap; }
 .am-pick:hover { background: #eef1f5; }
@@ -394,3 +394,6 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 .dt-now > * { flex-shrink: 0; }
 .dt-memo { flex: 1 0 auto; min-height: 160px; }
 .dt-memo-input { min-height: 140px; }
+.am-unitlink { align-self: flex-start; height: 32px; padding: 0; }
+.am-units { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed #c9ced4; }
+.am-unitm { min-width: 48px; font-size: 13px; font-weight: 700; color: #5b636c; }
