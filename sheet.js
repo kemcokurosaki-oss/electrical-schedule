@@ -306,7 +306,7 @@ function renderDetail(force) {
       nav.appendChild(b);
     };
     mk('‹ 前の項目', no - 1); mk('次の項目 ›', no + 1);
-    ttl.appendChild(nav);
+    box.appendChild(nav); // 詳細欄の一番下に固定（スクロールしても見える）
   }
   body.appendChild(ttl);
 
