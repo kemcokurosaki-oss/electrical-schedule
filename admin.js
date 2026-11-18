@@ -5,9 +5,9 @@ document.getElementById('btn-admin').addEventListener('click', () => openAdmin('
 
 const adminModal = document.getElementById('admin-modal');
 const adminBox = document.getElementById('admin-modal-box');
-const ADMIN_TABS = [['manage', '工番・機械の登録'], ['done', '完了工番'], ['steps', 'ステップの設定'], ['plan', '標準日程の試算']];
+const ADMIN_TABS = [['manage', '工番・機械の登録'], ['done', '完了工番'], ['steps', 'ステップの設定'], ['rules', '標準日程の設定']];
 let adminTab = null;
-let adminDirty = false;   // ステップの設定で保存していない変更があるか
+let adminDirty = false;   // ステップの設定・標準日程の設定で保存していない変更があるか
 adminModal.addEventListener('click', e => { if (e.target.dataset.close) closeAdmin(); });
 
 function confirmLeave() {
@@ -29,7 +29,7 @@ function openAdmin(tab) {
   if (tab === 'manage') renderManageView(view);
   if (tab === 'done') openDonePns(view);
   if (tab === 'steps') openSteps(view);
-  if (tab === 'plan') openPlan(view);
+  if (tab === 'rules') openRules(view);
 }
 
 function closeAdmin() {

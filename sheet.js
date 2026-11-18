@@ -316,15 +316,18 @@ function renderDetail(force) {
     const sec = section(body, '予定日');
     const row = el('div', 'dt-daterow');
     const di = el('input', 'dt-date');
-    di.type = 'date'; di.value = date; di.disabled = ro;
+    const locked = lockedDateNote(no);
+    di.type = 'date'; di.value = date; di.disabled = ro || !!locked;
     di.addEventListener('click', () => { try { di.showPicker(); } catch (_) { /* 対応していないブラウザ */ } });
-    di.addEventListener('change', () => saveStatus({ start_date: di.value || null, end_date: di.value || null }));
+    // 1〜13 はほかの項目も連動してずれる（schedule.js）
+    di.addEventListener('change', () => changeItemDate(pn, machine, no, di.value));
     row.appendChild(di);
     if (due && date) {
       const n = daysFromToday(date);
       row.appendChild(el('span', 'dt-due ' + due, due === 'late' ? `${-n}日遅れ` : n === 0 ? '今日まで' : `あと${n}日`));
     }
     sec.appendChild(row);
+    if (locked) sec.appendChild(el('div', 'dt-note dt-lock', locked));
     if (isMissingDate(rec)) sec.appendChild(el('div', 'dt-warn', '予定日を入れてください（対象外以外は必須です）'));
 
     // 状態

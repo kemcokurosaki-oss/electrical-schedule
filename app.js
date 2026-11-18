@@ -60,6 +60,11 @@ async function fetchTasks(projectNumbers) {
 }
 
 async function fetchColumns() {
+  // 標準日程（schedule.js）用の sched_* の列は、SQL を実行するまで無いので、読めなければ無しで読む
+  const withSched = await sb.from('denki_columns').select('project_number, machine, link_machine, unit, sort_order, sched_filled_at, sched_bankumi, sched_test');
+  schedColsReady = !withSched.error;
+  if (!withSched.error) return withSched;
+  console.warn('denki_columns の sched_* を読めないため、標準日程の自動入力・連動を止めます', withSched.error);
   const res = await sb.from('denki_columns').select('project_number, machine, link_machine, unit, sort_order');
   if (!res.error) return res;
   console.warn('denki_columns の unit を読めないため、ユニットなしで表示します', res.error);
@@ -68,14 +73,18 @@ async function fetchColumns() {
 
 async function loadData() {
   const today = todayStr();
-  const [completedRes, denkiDoneRes, colRes, stepRes, meetRes, histRes] = await Promise.all([
+  const [completedRes, denkiDoneRes, colRes, stepRes, meetRes, histRes, ruleRes] = await Promise.all([
     sb.from('completed_projects').select('project_number'),
     sb.from('denki_completed_projects').select('project_number'),
     fetchColumns(),
     sb.from('denki_steps').select('process_no, steps'),
     sb.from('denki_meetings').select('*').eq('meeting_date', today).maybeSingle(),
     sb.from('denki_history').select('*').eq('meeting_date', today),
+    sb.from('denki_schedule_rules').select('rule_key, weeks'),
   ]);
+  // 標準日程の決まりは SQL を実行するまで無いので、読めなければ最初の決まりを使う
+  schedRulesReady = !ruleRes.error;
+  applyScheduleRules(ruleRes.error ? [] : ruleRes.data);
   [completedRes, denkiDoneRes, colRes, stepRes, meetRes, histRes].forEach(r => { if (r.error) throw r.error; });
 
   const completedNums = new Set((completedRes.data || []).map(c => String(c.project_number)));
@@ -89,7 +98,8 @@ async function loadData() {
   allColumns = colRes.data
     .filter(c => !completedNums.has(String(c.project_number)))
     .map(c => ({ project_number: String(c.project_number), machine: c.machine,
-                 link_machine: c.link_machine || c.machine, unit: String(c.unit || '').trim(), sort_order: c.sort_order }))
+                 link_machine: c.link_machine || c.machine, unit: String(c.unit || '').trim(), sort_order: c.sort_order,
+                 sched_filled_at: c.sched_filled_at || null, sched_bankumi: c.sched_bankumi || null, sched_test: c.sched_test || null }))
     .sort((a, b) => a.project_number.localeCompare(b.project_number) || a.sort_order - b.sort_order);
   currentProjects = allColumns.filter(c => !denkiCompleted.has(c.project_number));
 
@@ -157,6 +167,7 @@ async function refreshDisplay() {
   showLoading();
   try {
     await loadData();
+    await syncSchedules();
   } catch (e) {
     console.error(e);
     alert('データを読み込めませんでした。ページを再読み込みしてください。\n' + (e.message || e));
@@ -171,7 +182,7 @@ setInterval(async () => {
   const a = document.activeElement;
   if (a && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return;
   if (!document.getElementById('admin-modal').hidden) return;
-  try { await loadData(); renderAll(); } catch (e) { console.warn('自動の読み直しに失敗', e); }
+  try { await loadData(); renderAll(); if (await syncSchedules()) renderAll(); } catch (e) { console.warn('自動の読み直しに失敗', e); }
 }, 60000);
 
 // ─── 会議 ───────────────────────────────────────────
