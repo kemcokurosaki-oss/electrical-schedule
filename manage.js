@@ -90,12 +90,15 @@ function candidateList(pn) {
   return [...cand.machines.keys()].sort().map(m => ({ m, u: '' }));
 }
 
+// 番号を数の大きさで並べる（OF2 → OF11 の順）
+const natCmp = (a, b) => a.localeCompare(b, 'ja', { numeric: true });
+
 // ユニットの候補（「ユニットで追加する」を開いたときだけ出す）
 function unitList(pn) {
   const cand = manageCandidates && manageCandidates.get(pn);
   if (!cand) return [];
   const list = [];
-  [...cand.machines.keys()].sort().forEach(m => [...cand.machines.get(m)].sort().forEach(u => list.push({ m, u })));
+  [...cand.machines.keys()].sort().forEach(m => [...cand.machines.get(m)].sort(natCmp).forEach(u => list.push({ m, u })));
   return list;
 }
 
@@ -126,9 +129,11 @@ function renderPicks(box, list, units, makeButton) {
   if (!mgUnitsOpen) return;
   const ub = el('div', 'am-units');
   [...new Set(units.map(x => x.m))].forEach(m => {
-    const row = el('div', 'am-group');
+    const row = el('div', 'am-unitrow');
     row.appendChild(el('span', 'am-unitm', m));
-    units.filter(x => x.m === m).forEach(x => row.appendChild(makeButton(x, x.u)));
+    const btns = el('div', 'am-unitbtns');
+    units.filter(x => x.m === m).forEach(x => { const b = makeButton(x, x.u); b.title = `${x.m} ${x.u}`; btns.appendChild(b); });
+    row.appendChild(btns);
     ub.appendChild(row);
   });
   box.appendChild(ub);

@@ -396,4 +396,8 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 .dt-memo-input { min-height: 140px; }
 .am-unitlink { align-self: flex-start; height: 32px; padding: 0; }
 .am-units { display: flex; flex-direction: column; gap: 8px; padding-top: 8px; border-top: 1px dashed #c9ced4; }
-.am-unitm { min-width: 48px; font-size: 13px; font-weight: 700; color: #5b636c; }
+.am-unitrow { display: grid; grid-template-columns: 44px minmax(0, 1fr); gap: 8px; align-items: start; }
+.am-unitm { line-height: 36px; font-size: 13px; font-weight: 700; color: #5b636c; }
+.am-unitbtns { display: grid; grid-template-columns: repeat(auto-fill, minmax(76px, 1fr)); gap: 6px; }
+.am-unitbtns .am-pick { width: 100%; min-width: 0; padding: 0 6px; overflow: hidden; text-overflow: ellipsis; }
+.am-units .am-unitrow + .am-unitrow { padding-top: 8px; border-top: 1px solid #e3e6ea; }
