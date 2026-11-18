@@ -274,27 +274,8 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 .am-btn.sm { height: 34px; padding: 0 12px; font-size: 13px; border-radius: 7px; }
 .am-btn.sm.on { background: #4a5a72; border-color: #4a5a72; color: #fff; }
 .am-card { background: #fff; border: 1px solid #b7bec8; border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; min-height: 0; }
-.am-band { display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 0 10px 0 18px; background: #cdd3db; border-bottom: 1px solid #b7bec8; }
-.am-band > b { font-size: 17px; color: #1f252c; }
-.am-band .cust { font-size: 13px; color: #3f4751; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.am-band .cnt { font-size: 13px; font-weight: 700; color: #3f4751; white-space: nowrap; }
 
 /* 工番・機械の登録 */
-.am-jobs { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(440px, 100%), 1fr)); gap: 14px; align-items: start; }
-.am-tiles { display: flex; flex-wrap: wrap; gap: 8px; padding: 14px 18px; }
-.am-tile { display: flex; align-items: center; height: 40px; border: 1px solid #c9ced4; border-radius: 7px; background: #fff; overflow: hidden; box-sizing: border-box; }
-.am-tile button { height: 100%; padding: 0; border: none; background: none; color: #5b636c; font-family: inherit; cursor: pointer; }
-.am-tile .mv { width: 28px; font-size: 18px; }
-.am-tile .mv:hover:not(:disabled) { background: #eef1f5; color: #2a2f35; }
-.am-tile .mv:disabled { opacity: .2; cursor: default; }
-.am-tile .nm { display: flex; align-items: baseline; gap: 4px; padding: 0 4px; white-space: nowrap; }
-.am-tile .nm b { font-size: 15px; }
-.am-tile .nm span { font-size: 13px; font-weight: 500; color: #5b636c; }
-.am-tile .del { width: 34px; border-left: 1px solid #e3e6ea; color: #8a929b; font-size: 12px; }
-.am-tile .del:hover { background: #f5d5d3; color: #962d2a; }
-.am-empty-line { font-size: 14px; color: #7c858f; line-height: 40px; }
-.am-picker { margin: 0 18px 16px; padding: 12px 14px; background: #f5f6f8; border: 1px solid #e3e6ea; border-radius: 8px; display: flex; flex-direction: column; gap: 8px; }
-.am-plabel { font-size: 13px; font-weight: 700; color: #5b636c; }
 .am-group { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .am-group > span { width: 56px; font-size: 13px; font-weight: 700; color: #5b636c; }
 .am-pick { height: 40px; min-width: 66px; padding: 0 14px; border: 1px solid #c9ced4; border-radius: 7px; background: #fff; color: #2a2f35; font-weight: 700; font-size: 14px;
@@ -395,6 +376,17 @@ body.v2 #view-minutes { padding: 12px 16px; gap: 12px; box-sizing: border-box; }
 .am-foot .msg { margin-right: auto; font-size: 14px; font-weight: 700; color: #7c858f; }
 .am-foot .msg.dirty { color: #962d2a; }
 .am-foot .msg.ok { color: #24672b; }
+/* 工番・機械の登録（左に工番、右に機械） */
+.am-bar + .am-split { padding-top: 0; }
+.am-item.pn { grid-template-columns: 52px minmax(0, 1fr) auto; }
+.am-item.pn > b { font-size: 16px; text-align: left; opacity: 1; }
+.am-item.pn .nm { font-size: 13px; }
+.am-edcnt { font-size: 14px; font-weight: 700; color: #3f4751; white-space: nowrap; }
+.am-mname { flex: 1; min-width: 0; height: 40px; display: flex; align-items: baseline; gap: 6px; padding: 0 12px; line-height: 40px;
+  border: 1px solid #c9ced4; border-radius: 7px; background: #fff; box-sizing: border-box; white-space: nowrap; overflow: hidden; }
+.am-mname b { font-size: 15px; }
+.am-mname span { font-size: 13px; color: #5b636c; }
+.am-split > .am-new { overflow-y: auto; }
 @media (max-width: 900px) { .am-two, .am-split { grid-template-columns: minmax(0, 1fr); } }
 
 .dt-body > * { flex-shrink: 0; }

@@ -3,7 +3,7 @@
 // 列のキー（machine）は 機械名＋ユニット名（例: FS と BT1 → FSBT1）。全体工程表とは link_machine と unit で照合する
 let manageCandidates = null;   // 工番ごとの { customer, machines: Map<機械, Set<ユニット>> }
 let mgView = null;             // 描画先（admin.js の .am-view）
-let mgPicking = null;          // 「＋ 機械を追加」を開いている工番
+let mgSel = null;              // 左の一覧で選んでいる工番
 let mgNewOpen = false;         // 「工番を追加」を開いているか
 let mgNewPn = null;            // 「工番を追加」で選んだ工番
 let mgNewQ = '';               // 工番の絞り込み
@@ -24,7 +24,7 @@ function amBtn(cls, text, onClick) {
 }
 
 function mgReset() {
-  mgView = null; mgPicking = null; mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
+  mgView = null; mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
 }
 
 async function renderManageView(view) {
@@ -134,78 +134,101 @@ function renderGroups(box, pn, list, makeButton) {
 }
 
 // ─── 画面 ─────────────────────────────────────────────
+// 左に工番の一覧、右に選んだ工番の機械（上から順＝進捗確認表の左から順）。ステップの設定と同じ並び
 function renderManage() {
   const view = mgView;
   if (!view || !view.isConnected) return;
-  const old = view.querySelector('.am-scroll');
-  const top = old ? old.scrollTop : 0;
+  const oldItems = view.querySelector('.am-items');
+  const oldBody = view.querySelector('.am-mgbody');
+  const itemsTop = oldItems ? oldItems.scrollTop : 0;
+  const bodyTop = oldBody ? oldBody.scrollTop : 0;
   view.innerHTML = '';
 
   const cols = columnsByProject();
   const pns = Object.keys(cols).sort();
+  if (!mgNewOpen && !cols[mgSel]) mgSel = pns[0] || null;
 
   const bar = el('div', 'am-bar');
   bar.appendChild(el('b', '', pns.length ? `${pns.length}工番・${currentProjects.length}列を表示中` : '表示中の列はありません'));
   bar.appendChild(el('span', 'am-hint', '変更はすぐに保存されます。列を外しても入力済みのデータは残ります。'));
-  if (!mgNewOpen) bar.appendChild(amBtn('am-btn dark', '＋ 工番を追加', () => { mgNewOpen = true; mgPicking = null; renderManage(); }));
+  if (!mgNewOpen) bar.appendChild(amBtn('am-btn dark', '＋ 工番を追加', () => { mgNewOpen = true; renderManage(); }));
   view.appendChild(bar);
 
-  const scroll = el('div', 'am-scroll');
-  if (mgNewOpen) scroll.appendChild(renderNewCard());
-  if (!pns.length) scroll.appendChild(el('div', 'am-muted', '右上の「＋ 工番を追加」から、表示する工番を追加してください。'));
-  const grid = el('div', 'am-jobs');
-  pns.forEach(pn => grid.appendChild(renderJobCard(pn, cols[pn])));
-  scroll.appendChild(grid);
-  view.appendChild(scroll);
-  scroll.scrollTop = top;
+  const split = el('div', 'am-split');
+  const left = el('div', 'am-card');
+  const lhead = el('div', 'am-cardhead');
+  lhead.appendChild(el('b', '', '工番'));
+  lhead.appendChild(el('span', '', `${pns.length}工番`));
+  left.appendChild(lhead);
+  const items = el('div', 'am-items');
+  pns.forEach(pn => {
+    const cand = manageCandidates.get(pn);
+    const b = amBtn('am-item pn' + (!mgNewOpen && pn === mgSel ? ' on' : ''), null, () => {
+      if (mgNewOpen) { mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set(); }
+      mgSel = pn; renderManage();
+    });
+    b.appendChild(el('b', '', pn));
+    b.appendChild(el('span', 'nm', (cand && cand.customer) || cols[pn][0].customer_name || ''));
+    const meta = el('span', 'meta');
+    meta.appendChild(el('span', 'am-badge', String(cols[pn].length)));
+    b.appendChild(meta);
+    items.appendChild(b);
+  });
+  if (!pns.length) items.appendChild(el('div', 'am-muted', '右上の「＋ 工番を追加」から、表示する工番を追加してください。'));
+  left.appendChild(items);
+  split.appendChild(left);
+
+  if (mgNewOpen) split.appendChild(renderNewCard());
+  else if (mgSel) split.appendChild(renderJobEditor(mgSel, cols[mgSel]));
+  else split.appendChild(el('div', 'am-card am-muted', '工番がありません。'));
+  view.appendChild(split);
+
+  items.scrollTop = itemsTop;
+  const body = view.querySelector('.am-mgbody');
+  if (body) body.scrollTop = bodyTop;
 }
 
-function renderJobCard(pn, cols) {
+function renderJobEditor(pn, cols) {
   const cand = manageCandidates.get(pn) || { customer: '' };
-  const open = mgPicking === pn;
   const card = el('div', 'am-card');
 
-  const band = el('div', 'am-band');
-  band.appendChild(el('b', '', pn));
-  band.appendChild(el('span', 'cust', cand.customer || cols[0].customer_name || ''));
-  band.appendChild(el('span', 'cnt', `${cols.length}台`));
-  band.appendChild(amBtn('am-btn sm' + (open ? ' on' : ''), open ? '閉じる' : '＋ 機械を追加', () => { mgPicking = open ? null : pn; renderManage(); }));
-  card.appendChild(band);
+  const head = el('div', 'am-edhead');
+  head.appendChild(el('b', 'no', pn));
+  head.appendChild(el('b', 'nm', cand.customer || cols[0].customer_name || ''));
+  head.appendChild(el('span', 'am-edcnt', `${cols.length}台`));
+  card.appendChild(head);
 
-  const tiles = el('div', 'am-tiles');
-  cols.forEach((col, i) => tiles.appendChild(renderColumnTile(col, i, cols)));
-  if (!cols.length) tiles.appendChild(el('span', 'am-empty-line', '表示する機械がありません'));
-  card.appendChild(tiles);
+  const body = el('div', 'am-edbody am-mgbody');
+  const col = el('div', 'am-edcol');
+  col.appendChild(el('span', 'am-label', '機械（上から順に、進捗確認表の左から並びます）'));
+  cols.forEach((c, i) => col.appendChild(renderColumnRow(c, i, cols)));
+  if (!cols.length) col.appendChild(el('div', 'am-nosteps', '表示する機械がありません'));
+  body.appendChild(col);
 
-  if (open) {
-    const picker = el('div', 'am-picker');
-    picker.appendChild(el('span', 'am-plabel', '追加できる機械・ユニット（全体工程表から）'));
-    const rest = candidateList(pn).filter(x => !isShown(pn, x));
-    if (!rest.length) picker.appendChild(el('span', 'am-hint', '追加できる機械はありません'));
-    renderGroups(picker, pn, rest, (x, label) => amBtn('am-pick add', '＋ ' + label, () => addColumn(pn, x.m, x.u)));
-    card.appendChild(picker);
-  }
+  const pick = el('div', 'am-preview');
+  pick.appendChild(el('span', 'am-label', '追加できる機械・ユニット（全体工程表から）'));
+  const rest = candidateList(pn).filter(x => !isShown(pn, x));
+  if (!rest.length) pick.appendChild(el('span', 'am-hint', '追加できる機械はありません'));
+  renderGroups(pick, pn, rest, (x, label) => amBtn('am-pick add', '＋ ' + label, () => addColumn(pn, x.m, x.u)));
+  body.appendChild(pick);
+
+  card.appendChild(body);
   return card;
 }
 
-function renderColumnTile(col, i, cols) {
-  const t = el('div', 'am-tile');
-  const mv = (text, title, dir, disabled) => {
-    const b = amBtn('mv', text, () => moveColumn(cols, i, dir));
-    b.title = title; b.disabled = disabled;
-    return b;
-  };
-  t.appendChild(mv('‹', '左へ移動', -1, i === 0));
+function renderColumnRow(col, i, cols) {
+  const row = el('div', 'am-step');
+  row.appendChild(el('span', 'n', String(i + 1)));
   // ユニットの列は「機械名 ユニット名」、それ以外は列の名前をそのまま出す
-  const nm = el('span', 'nm');
+  const nm = el('div', 'am-mname');
   nm.appendChild(el('b', '', col.unit ? col.link_machine : machineLabel(col.machine)));
   if (col.unit) nm.appendChild(el('span', '', col.unit));
-  t.appendChild(nm);
-  t.appendChild(mv('›', '右へ移動', 1, i === cols.length - 1));
-  const del = amBtn('del', '✕', () => removeColumn(col));
-  del.title = 'この列を外す（入力済みのデータは残ります）';
-  t.appendChild(del);
-  return t;
+  row.appendChild(nm);
+  const btn = (cls, label, title, fn, disabled) => { const b = amBtn('am-sbtn' + cls, label, fn); b.title = title; b.disabled = !!disabled; return b; };
+  row.appendChild(btn('', '▲', '上へ移動（進捗確認表では左へ）', () => moveColumn(cols, i, -1), i === 0));
+  row.appendChild(btn('', '▼', '下へ移動（進捗確認表では右へ）', () => moveColumn(cols, i, 1), i === cols.length - 1));
+  row.appendChild(btn(' del', '✕', 'この列を外す（入力済みのデータは残ります）', () => removeColumn(col)));
+  return row;
 }
 
 // ─── 工番を追加 ───────────────────────────────────────
@@ -308,7 +331,7 @@ async function addNewProject() {
   const pn = mgNewPn;
   const picks = candidateList(pn).filter(x => mgNewSel.has(mgKey(x)));
   if (!pn || picks.length === 0) return;
-  mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set();
+  mgNewOpen = false; mgNewPn = null; mgNewQ = ''; mgNewSel = new Set(); mgSel = pn;
   const rows = picks.map((x, i) => columnRow(pn, x.m, x.u, (i + 1) * 10));
   await manageWrite(sb.from('denki_columns').insert(rows));
 }
